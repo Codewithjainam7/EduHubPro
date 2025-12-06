@@ -152,72 +152,90 @@ export const analyzeDocument = async (file: File): Promise<{ text: string, topic
         return { error: "Failed to analyze document. Please try again." };
     }
 };
-export const generateQuizFromContent = async (content: string, title: string): Promise<Quiz | null> => {
-  if (!apiKey) {
-    console.error("API Key missing");
-    return null;
-  }
+export const generateQuestionBank = async (
+    content: string, 
+    mode: GeneratorMode, 
+    shortCount: number = 0, 
+    longCount: number = 0
+): Promise<GeneratedItem[]> => {
+    if (!apiKey) {
+        console.error("API Key missing");
+        return [];
+    }
 
-  const prompt = `
-    You are an expert tutor. Create a personalized multiple-choice quiz based ONLY on the following study notes.
-    Adapt the difficulty.
-    Generate 5 high-quality questions.
-    Notes: "${content.substring(0, 15000)}..."
-  `;
+    let prompt = "";
+    const baseInstruction = `You are a strict exam generator. Use the provided CONTENT text to generate questions. Do not use outside knowledge.`;
 
-  const schema: Schema = {
-    type: Type.OBJECT,
-    properties: {
-      questions: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            question: { type: Type.STRING },
-            options: { type: Type.ARRAY, items: { type: Type.STRING } },
-            correctAnswer: { type: Type.INTEGER, description: "Index of the correct option (0-3)" },
-            explanation: { type: Type.STRING }
-          },
-          required: ["question", "options", "correctAnswer", "explanation"]
+    if (mode === 'MCQ') {
+        prompt = `${baseInstruction} Generate 10 multiple choice questions with 4 options (A,B,C,D) and correct answer/explanation. CONTENT: ${content.substring(0, 12000)}`;
+    } else if (mode === 'FLASHCARD') {
+        prompt = `${baseInstruction} Generate 10 high-quality flashcards. 'Question' is the front, 'Answer' is the back. CONTENT: ${content.substring(0, 12000)}`;
+    } else if (mode === 'FILL_BLANK') {
+        prompt = `${baseInstruction} Generate 10 fill-in-the-blank sentences. The 'question' is the sentence with a missing term (____). The 'answer' is the missing term. CONTENT: ${content.substring(0, 12000)}`;
+    } else if (mode === 'QUESTION_BANK') {
+        // Support for custom marks: 3, 6, 5, 2, 4
+        prompt = `${baseInstruction} Generate a formal exam paper with SUBJECTIVE questions.
+        Create exactly ${shortCount} Short Answer Questions (3 marks each).
+        Also create ${longCount} questions distributed as follows:
+        - 1 question worth 6 marks (detailed analysis)
+        - 1 question worth 5 marks (comprehensive answer)
+        - 1 question worth 2 marks (brief explanation)
+        - 1 question worth 4 marks (moderate detail)
+        
+        IMPORTANT: 
+        - ALL questions are SUBJECTIVE (text-based answers, NO multiple choice options)
+        - Do NOT include any 'options' array
+        - Provide detailed model answers for each question
+        - For higher mark questions, provide more comprehensive model answers
+        CONTENT: ${content.substring(0, 12000)}`;
+    }
+
+    const schema: Schema = {
+        type: Type.OBJECT,
+        properties: {
+            items: {
+                type: Type.ARRAY,
+                items: {
+                    type: Type.OBJECT,
+                    properties: {
+                        question: { type: Type.STRING },
+                        answer: { type: Type.STRING },
+                        marks: { type: Type.INTEGER },
+                        type: { type: Type.STRING }
+                    },
+                    required: ["question", "answer", "type"]
+                }
+            }
         }
-      }
-    },
-    required: ["questions"]
-  };
-
-  try {
-    const response = await ai.models.generateContent({
-      model: modelId,
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: schema,
-        temperature: 0.7,
-      }
-    });
-
-    const text = response.text;
-    if (!text) return null;
-
-    const data = JSON.parse(cleanJson(text));
-    
-    return {
-      id: crypto.randomUUID(),
-      title: `Quiz: ${title}`,
-      sourceFileId: 'generated',
-      questions: data.questions.map((q: any, idx: number) => ({
-        ...q,
-        id: `q-${idx}`
-      })),
-      completed: false,
-      createdAt: new Date().toISOString()
     };
 
-  } catch (error) {
-    console.error("Gemini Quiz Generation Error:", error);
-    return null;
-  }
-};
+    try {
+        const response = await ai.models.generateContent({
+            model: modelId,
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: schema,
+                temperature: 0.5,
+            }
+        });
+        
+        const text = response.text || '{"items": []}';
+        const data = JSON.parse(cleanJson(text));
+        
+        return data.items.map((item: any, idx: number) => ({
+            ...item,
+            id: `gen-${idx}-${Date.now()}`,
+            // Remove options field if it exists (for subjective questions)
+            options: item.options && mode !== 'MCQ' ? undefined : item.options,
+            // Normalize types
+            type: mode === 'QUESTION_BANK' ? (item.marks <= 3 ? 'SHORT_ANSWER' : 'LONG_ANSWER') : mode 
+        }));
+    } catch (e) {
+        console.error("Question Bank Generation Error", e);
+        return [];
+    }
+}
 
 export const generateSmartRoadmap = async (
   topics: string[], 
