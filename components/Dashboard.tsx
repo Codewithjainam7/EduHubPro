@@ -13,9 +13,11 @@ interface DashboardProps {
   examName: string;
   daysUntilExam: number;
   username?: string;
+  onInstantFlashcards: () => void;
+  loading: boolean;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ sessions, analytics, recentUploads, examName, daysUntilExam, username = 'Alex_Dev' }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ sessions, analytics, recentUploads, examName, daysUntilExam, username = 'Alex_Dev', onInstantFlashcards, loading }) => {
   const nextSession = sessions.find(s => s.status === 'PENDING');
   
   const overallMastery = analytics.length > 0 
