@@ -52,10 +52,14 @@ const App: React.FC = () => {
   ]);
 
   // --- HANDLERS ---
-  const handleLogin = (username: string) => {
-    setUser(username);
-    setPhase('BOOTING');
-  };
+ const handleLogin = (username: string, userData?: any) => {
+  setUser(username);
+  if (userData) {
+    // Store Google user data
+    localStorage.setItem('eduhub_user', JSON.stringify(userData));
+  }
+  setPhase('BOOTING');
+};
 
   const handleBootComplete = () => {
     setPhase('APP');
