@@ -38,39 +38,50 @@ const extractTextFromDocx = async (file: File): Promise<string> => {
 export const analyzeDocument = async (file: File): Promise<{ text: string, topics: string[], analysis: DocumentAnalysis } | { error: string } | null> => {
     if (!apiKey) return { error: "API Key is missing." };
 
+    // 50MB Limit Check
     if (file.size > 50 * 1024 * 1024) {
-        return { error: "Document size exceeds the 50MB limit." };
+        return { error: "Document size exceeds the 50MB limit. Please upload a smaller file or compress the PDF." };
+    }
+
+    // Check supported file types
+    const supportedTypes = [
+        'application/pdf',
+        'text/plain',
+        'image/jpeg',
+        'image/png',
+        'image/jpg'
+    ];
+
+    if (!supportedTypes.includes(file.type)) {
+        return { 
+            error: `Unsupported file type: ${file.type}. Please upload PDF, TXT, or image files only. For Word documents, please convert to PDF first.` 
+        };
     }
 
     try {
-        let textContent = "";
-        let useTextMode = false;
-
-        // Handle Word documents
-        if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || 
-            file.name.endsWith('.docx')) {
-            textContent = await extractTextFromDocx(file);
-            useTextMode = true;
-        }
-        // Handle plain text
-        else if (file.type === "text/plain") {
-            textContent = await file.text();
-            useTextMode = true;
-        }
-
+        const filePart = await fileToGenerativePart(file);
+        
         const prompt = `
             You are a strict Academic Content Filter and Analysis Engine.
             
             STEP 1: VALIDATION
-            Determine if the ${useTextMode ? 'text' : 'document'} is valid educational study material.
+            Determine if the attached document is valid educational study material (e.g., lecture notes, textbook chapters, academic papers, exam questions, educational articles).
             
-            STRICTLY REJECT: menus, fiction, invoices, receipts, casual chat, random images.
+            STRICTLY REJECT the following:
+            - Restaurant menus, food recipes
+            - Fiction novels, entertainment news
+            - Invoices, receipts, financial statements (unless clearly an accounting textbook example)
+            - Random internet comments, casual chat logs
+            - Source code without educational context
+            - Non-textual images or random photos
             
             STEP 2: ANALYSIS (Only if Valid)
-            If valid:
-            1. ANALYZE the content
-            2. IDENTIFY key concepts, definitions, formulas
-            3. GENERATE summary and topics
+            If the document is valid study material:
+            1. EXTRACT all readable text.
+            2. ANALYZE to identify key concepts, definitions, and formulas.
+            3. GENERATE a brief summary and main topics.
+            
+            Return JSON in this format. If rejected, set isStudyMaterial to false and provide a rejectionReason.
         `;
 
         const schema: Schema = {
@@ -78,7 +89,8 @@ export const analyzeDocument = async (file: File): Promise<{ text: string, topic
             properties: {
                 isStudyMaterial: { type: Type.BOOLEAN },
                 rejectionReason: { type: Type.STRING },
-                summary: { type: Type.STRING },
+                fullText: { type: Type.STRING, description: "The full extracted text content of the document" },
+                summary: { type: Type.STRING, description: "A concise summary of the document (max 100 words)" },
                 topics: { type: Type.ARRAY, items: { type: Type.STRING } },
                 keyConcepts: { type: Type.ARRAY, items: { type: Type.STRING } },
                 definitions: {
@@ -96,46 +108,31 @@ export const analyzeDocument = async (file: File): Promise<{ text: string, topic
             required: ["isStudyMaterial"]
         };
 
-        let response;
-
-        if (useTextMode) {
-            // For Word/Text: Send text directly
-            response = await ai.models.generateContent({
-                model: modelId,
-                contents: `${prompt}\n\nCONTENT:\n${textContent.substring(0, 50000)}`,
-                config: {
-                    responseMimeType: "application/json",
-                    responseSchema: schema
-                }
-            });
-        } else {
-            // For PDF/Images: Send file
-            const filePart = await fileToGenerativePart(file);
-            response = await ai.models.generateContent({
-                model: modelId,
-                contents: {
-                    parts: [filePart, { text: prompt }]
-                },
-                config: {
-                    responseMimeType: "application/json",
-                    responseSchema: schema
-                }
-            });
-        }
+        const response = await ai.models.generateContent({
+            model: modelId,
+            contents: {
+                parts: [filePart, { text: prompt }]
+            },
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: schema
+            }
+        });
 
         const text = response.text;
         if (!text) return { error: "No response from AI service." };
 
         const data = JSON.parse(cleanJson(text));
 
+        // Strict Rejection Logic
         if (data.isStudyMaterial === false) {
             return { 
-                error: data.rejectionReason || "Content detected as non-educational." 
+                error: data.rejectionReason || "Content detected as non-educational. System accepts study materials only." 
             };
         }
 
         return {
-            text: useTextMode ? textContent : (data.fullText || ""),
+            text: data.fullText || "",
             topics: data.topics || [],
             analysis: {
                 summary: data.summary || "No summary available.",
@@ -147,10 +144,14 @@ export const analyzeDocument = async (file: File): Promise<{ text: string, topic
 
     } catch (error: any) {
         console.error("Document Analysis Error:", error);
+        
+        if (error.message && error.message.includes("exceeds supported limit")) {
+             return { error: "Document size exceeds the AI model's supported limit (50MB)." };
+        }
+
         return { error: "Failed to analyze document. Please try again." };
     }
 };
-
 export const generateQuizFromContent = async (content: string, title: string): Promise<Quiz | null> => {
   if (!apiKey) {
     console.error("API Key missing");
