@@ -380,7 +380,6 @@ export const generateQuestionBank = async (
         console.error("Question Bank Generation Error", e);
         return [];
     }
-    }
 };
 
 export const askDocumentQuestion = async (content: string, question: string): Promise<string> => {
