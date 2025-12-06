@@ -201,7 +201,7 @@ const App: React.FC = () => {
   const renderContent = () => {
     switch (currentView) {
       case ViewState.DASHBOARD:
-        return <Dashboard sessions={sessions} analytics={analytics} recentUploads={uploads} examName={examInfo.name} daysUntilExam={daysUntilExam} username={user} />;
+        return <Dashboard sessions={sessions} analytics={analytics} recentUploads={uploads} examName={examInfo.name} daysUntilExam={daysUntilExam} username={user} onInstantFlashcards={handleInstantFlashcards} loading={loading} />;
       case ViewState.UPLOADS:
         return <UploadView files={uploads} onUpload={handleUpload} history={generatedHistory} onAddToHistory={handleAddToHistory} />;
       case ViewState.ROADMAP:
