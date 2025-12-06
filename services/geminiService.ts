@@ -316,41 +316,42 @@ export const generateQuestionBank = async (
     } else if (mode === 'FILL_BLANK') {
         prompt = `${baseInstruction} Generate 10 fill-in-the-blank sentences. The 'question' is the sentence with a missing term (____). The 'answer' is the missing term. CONTENT: ${content.substring(0, 12000)}`;
     } else if (mode === 'QUESTION_BANK') {
-        // Support for custom marks: 3, 6, 5, 2, 4
-        prompt = `${baseInstruction} Generate a formal exam paper with SUBJECTIVE questions.
-        Create exactly ${shortCount} Short Answer Questions (3 marks each).
-        Also create ${longCount} questions distributed as follows:
-        - 1 question worth 6 marks (detailed analysis)
-        - 1 question worth 5 marks (comprehensive answer)
-        - 1 question worth 2 marks (brief explanation)
-        - 1 question worth 4 marks (moderate detail)
-        
-        IMPORTANT: 
-        - ALL questions are SUBJECTIVE (text-based answers, NO multiple choice options)
-        - Do NOT include any 'options' array
-        - Provide detailed model answers for each question
-        - For higher mark questions, provide more comprehensive model answers
-        CONTENT: ${content.substring(0, 12000)}`;
-    }
+    // Support for custom marks: 3, 6, 5, 2, 4
+    prompt = `${baseInstruction} Generate a formal exam paper with SUBJECTIVE questions.
+    Create exactly ${shortCount} Short Answer Questions (3 marks each).
+    Also create ${longCount} questions distributed as follows:
+    - 1 question worth 6 marks (detailed analysis)
+    - 1 question worth 5 marks (comprehensive answer)
+    - 1 question worth 2 marks (brief explanation)
+    - 1 question worth 4 marks (moderate detail)
+    
+    IMPORTANT: 
+    - ALL questions are SUBJECTIVE (text-based answers, NO multiple choice options)
+    - Do NOT include any 'options' array
+    - Provide detailed model answers for each question
+    - For higher mark questions, provide more comprehensive model answers
+    CONTENT: ${content.substring(0, 12000)}`;
+}
 
     const schema: Schema = {
-        type: Type.OBJECT,
-        properties: {
+    type: Type.OBJECT,
+    properties: {
+        items: {
+            type: Type.ARRAY,
             items: {
-                type: Type.ARRAY,
-                items: {
-                    type: Type.OBJECT,
-                    properties: {
-                        question: { type: Type.STRING },
-                        answer: { type: Type.STRING },
-                        marks: { type: Type.INTEGER },
-                        type: { type: Type.STRING }
-                    },
-                    required: ["question", "answer", "type"]
-                }
+                type: Type.OBJECT,
+                properties: {
+                    question: { type: Type.STRING },
+                    // REMOVED: options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    answer: { type: Type.STRING },
+                    marks: { type: Type.INTEGER },
+                    type: { type: Type.STRING }
+                },
+                required: ["question", "answer", "type"]
             }
         }
-    };
+    }
+};
 
     try {
         const response = await ai.models.generateContent({
@@ -359,24 +360,24 @@ export const generateQuestionBank = async (
             config: {
                 responseMimeType: "application/json",
                 responseSchema: schema,
-                temperature: 0.5,
+                temperature: 0.5, // Lower temperature for more factual extraction
             }
         });
         
         const text = response.text || '{"items": []}';
         const data = JSON.parse(cleanJson(text));
         
+        // OLD RETURN STATEMENT - DELETE THIS:
         return data.items.map((item: any, idx: number) => ({
             ...item,
             id: `gen-${idx}-${Date.now()}`,
-            // Remove options field if it exists (for subjective questions)
-            options: item.options && mode !== 'MCQ' ? undefined : item.options,
             // Normalize types
-            type: mode === 'QUESTION_BANK' ? (item.marks <= 3 ? 'SHORT_ANSWER' : 'LONG_ANSWER') : mode 
+            type: mode === 'QUESTION_BANK' ? (item.marks === 3 ? 'SHORT_ANSWER' : 'LONG_ANSWER') : mode 
         }));
     } catch (e) {
         console.error("Question Bank Generation Error", e);
         return [];
+    }
     }
 };
 
