@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Quiz, StudySession, GeneratedItem, GeneratorMode, DocumentAnalysis } from "../types";
-
+import * as mammoth from "mammoth";  // DELETE THIS
 const apiKey = process.env.API_KEY || '';
 const ai = new GoogleGenAI({ apiKey });
 
