@@ -41,7 +41,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({ sessions, generatePlan
   };
 
   return (
-    <div className="space-y-6 animate-fade-in h-[calc(100vh-140px)] flex flex-col max-w-[1600px] mx-auto text-gray-200">
+    <div className="space-y-6 animate-fade-in flex flex-col max-w-[1600px] mx-auto text-gray-200 pb-8">
        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0">
         <div>
             <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-2">Roadmap</h2>
@@ -62,7 +62,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({ sessions, generatePlan
         </div>
       </header>
 
-      <GlassCard className="flex-1 overflow-hidden flex flex-col animate-scale-in border-white/[0.08] relative" noPadding>
+      <GlassCard className="flex flex-col animate-scale-in border-white/[0.08] relative overflow-hidden" noPadding>
         {/* Card Header (Controls) */}
         <div className="flex items-center justify-between p-6 border-b border-white/[0.05] bg-white/[0.02] shrink-0 z-20 relative">
             <h3 className="text-2xl md:text-3xl font-bold text-white font-mono">
@@ -78,9 +78,9 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({ sessions, generatePlan
             </div>
         </div>
 
-        {/* Scrollable Calendar Area */}
-        <div className="flex-1 overflow-auto bg-black/20 custom-scrollbar relative">
-            <div className="min-w-[1000px] h-full flex flex-col">
+        {/* Scrollable Calendar Area - Fixed Height */}
+        <div className="overflow-auto bg-black/20 custom-scrollbar relative" style={{ height: 'calc(100vh - 340px)', minHeight: '500px' }}>
+            <div className="min-w-[1000px] h-full">
                 
                 {/* Days Header - Sticky */}
                 <div className="grid grid-cols-7 text-center border-b border-white/[0.05] bg-void/90 backdrop-blur-md sticky top-0 z-10">
@@ -91,8 +91,8 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({ sessions, generatePlan
                     ))}
                 </div>
 
-                {/* Days Grid */}
-                <div className="grid grid-cols-7 auto-rows-fr flex-1">
+                {/* Days Grid - Flexible height */}
+                <div className="grid grid-cols-7 auto-rows-fr" style={{ minHeight: 'calc(100% - 60px)' }}>
                     {blanks.map(blank => (
                         <div key={`blank-${blank}`} className="border-r border-b border-white/[0.03] min-h-[140px] bg-white/[0.005]"></div>
                     ))}
@@ -118,15 +118,15 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({ sessions, generatePlan
                                     </span>
                                     {daySessions.length > 0 && (
                                         <span className="text-[10px] text-gray-600 font-mono bg-white/[0.05] px-1.5 py-0.5 rounded">
-                                            {daySessions.length} ops
+                                            {daySessions.length}
                                         </span>
                                     )}
                                 </div>
                                 
-                                <div className="space-y-2">
+                                <div className="space-y-2 max-h-[calc(100%-50px)] overflow-y-auto custom-scrollbar">
                                     {daySessions.map(session => (
                                         <div key={session.id} className={`
-                                            p-2 rounded-lg border backdrop-blur-sm cursor-pointer transition-all hover:scale-[1.02] hover:z-10 relative
+                                            p-2 rounded-lg border backdrop-blur-sm cursor-pointer transition-all hover:scale-[1.02] relative
                                             ${session.type === 'MOCK_TEST' 
                                                 ? 'bg-brand-rose/10 border-brand-rose/30 text-brand-rose' 
                                                 : session.type === 'REVISION'
@@ -139,7 +139,7 @@ export const RoadmapView: React.FC<RoadmapViewProps> = ({ sessions, generatePlan
                                                     {new Date(session.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                                 </span>
                                             </div>
-                                            <div className="font-bold text-[11px] leading-tight truncate">{session.title}</div>
+                                            <div className="font-bold text-[11px] leading-tight line-clamp-2">{session.title}</div>
                                         </div>
                                     ))}
                                 </div>
