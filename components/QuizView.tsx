@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GlassCard } from './ui/GlassCard';
 import { Quiz } from '../types';
-import { ArrowRight, Brain, RefreshCcw, Check, Sparkles, Clock, Target, Play } from 'lucide-react';
+import { ArrowRight, Brain, RefreshCcw, Check, Sparkles, Clock, Target, Play, AlertTriangle, PenTool } from 'lucide-react';
 
 interface QuizViewProps {
   quizzes: Quiz[];
@@ -15,6 +15,34 @@ export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loadi
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [textAnswer, setTextAnswer] = useState('');
+  
+  // Anti-cheat system
+  const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  const [showWarning, setShowWarning] = useState(false);
+  const [examTerminated, setExamTerminated] = useState(false);
+  
+  useEffect(() => {
+    if (!activeQuiz) return;
+    
+    const handleVisibilityChange = () => {
+      if (document.hidden && !completed && !examTerminated) {
+        const newCount = tabSwitchCount + 1;
+        setTabSwitchCount(newCount);
+        
+        if (newCount >= 4) {
+          setExamTerminated(true);
+          setCompleted(true);
+        } else {
+          setShowWarning(true);
+          setTimeout(() => setShowWarning(false), 3000);
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [activeQuiz, completed, examTerminated, tabSwitchCount]);
 
   // If no quiz active, show list
   if (!activeQuiz) {
@@ -46,6 +74,9 @@ export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loadi
                             setCompleted(false);
                             setSelectedOption(null);
                             setShowExplanation(false);
+                            setTextAnswer('');
+                            setTabSwitchCount(0);
+                            setExamTerminated(false);
                         }}
                       >
                            {/* Glow Effect */}
@@ -88,18 +119,27 @@ export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loadi
           setCurrentQuestionIdx(prev => prev + 1);
           setSelectedOption(null);
           setShowExplanation(false);
+          setTextAnswer('');
       }
   };
+
+  const isSubjectiveQuestion = question.options === undefined || question.options.length === 0;
 
   if (completed) {
       return (
           <div className="max-w-2xl mx-auto pt-20 animate-fade-in text-center text-gray-200">
-              <GlassCard className="p-20 flex flex-col items-center border-green-500/20 shadow-[0_0_50px_rgba(34,197,94,0.1)]">
-                    <div className="w-28 h-28 bg-green-500/10 text-green-400 rounded-full flex items-center justify-center mb-10 border border-green-500/20 shadow-[0_0_30px_rgba(34,197,94,0.2)]">
-                        <TrophyIcon />
+              <GlassCard className={`p-20 flex flex-col items-center ${examTerminated ? 'border-red-500/20 shadow-[0_0_50px_rgba(239,68,68,0.1)]' : 'border-green-500/20 shadow-[0_0_50px_rgba(34,197,94,0.1)]'}`}>
+                    <div className={`w-28 h-28 ${examTerminated ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'} rounded-full flex items-center justify-center mb-10 border shadow-[0_0_30px_rgba(34,197,94,0.2)]`}>
+                        {examTerminated ? <AlertTriangle size={48} /> : <TrophyIcon />}
                     </div>
-                    <h2 className="text-5xl font-bold text-white mb-6 tracking-tight">Quiz Completed</h2>
-                    <p className="text-xl text-gray-400 mb-12 font-light">Your results have been saved to your progress report.</p>
+                    <h2 className="text-5xl font-bold text-white mb-6 tracking-tight">
+                        {examTerminated ? 'Exam Terminated' : 'Quiz Completed'}
+                    </h2>
+                    <p className="text-xl text-gray-400 mb-12 font-light">
+                        {examTerminated 
+                            ? 'Multiple tab switches detected. Exam has been automatically terminated for academic integrity.'
+                            : 'Your results have been saved to your progress report.'}
+                    </p>
                     <button 
                         onClick={() => setActiveQuiz(null)}
                         className="bg-white/[0.05] hover:bg-white/[0.1] text-white px-10 py-4 rounded-2xl font-bold border border-white/[0.1] transition-all"
@@ -113,17 +153,40 @@ export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loadi
 
   return (
     <div className="max-w-5xl mx-auto pt-10 animate-fade-in text-gray-200">
+        {/* Anti-cheat warning overlay */}
+        {showWarning && (
+            <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
+                <div className="bg-red-500/90 backdrop-blur-xl border border-red-400 px-8 py-6 rounded-2xl shadow-[0_0_40px_rgba(239,68,68,0.4)] flex items-center gap-4">
+                    <AlertTriangle size={32} className="text-white" />
+                    <div>
+                        <h3 className="text-white font-bold text-lg mb-1">Tab Switch Detected!</h3>
+                        <p className="text-white/90 text-sm">Warning {tabSwitchCount} of 3. Exam will terminate after 3 warnings.</p>
+                    </div>
+                </div>
+            </div>
+        )}
+
         <div className="mb-10 flex items-center justify-between">
             <button onClick={() => setActiveQuiz(null)} className="text-gray-500 hover:text-white text-xs font-bold uppercase tracking-widest transition-colors px-4 py-2 hover:bg-white/[0.05] rounded-lg">
                 Exit Quiz
             </button>
-            <div className="flex items-center gap-4 bg-white/[0.03] px-4 py-2 rounded-full border border-white/[0.05]">
-                 <div className="h-1.5 w-40 bg-gray-800 rounded-full overflow-hidden">
-                     <div className="h-full bg-brand-primary shadow-[0_0_10px_rgba(139,92,246,0.8)] transition-all duration-500" style={{width: `${((currentQuestionIdx + 1) / activeQuiz.questions.length) * 100}%`}}></div>
-                 </div>
-                 <span className="text-xs font-mono text-brand-primary">
-                    {currentQuestionIdx + 1}/{activeQuiz.questions.length}
-                </span>
+            <div className="flex items-center gap-4">
+                {/* Warning Counter */}
+                <div className="flex items-center gap-2 bg-red-500/10 px-4 py-2 rounded-full border border-red-500/20">
+                    <AlertTriangle size={14} className="text-red-400" />
+                    <span className="text-xs font-mono text-red-400">
+                        Warnings: {tabSwitchCount}/3
+                    </span>
+                </div>
+                
+                <div className="bg-white/[0.03] px-4 py-2 rounded-full border border-white/[0.05] flex items-center gap-4">
+                    <div className="h-1.5 w-40 bg-gray-800 rounded-full overflow-hidden">
+                        <div className="h-full bg-brand-primary shadow-[0_0_10px_rgba(139,92,246,0.8)] transition-all duration-500" style={{width: `${((currentQuestionIdx + 1) / activeQuiz.questions.length) * 100}%`}}></div>
+                    </div>
+                    <span className="text-xs font-mono text-brand-primary">
+                        {currentQuestionIdx + 1}/{activeQuiz.questions.length}
+                    </span>
+                </div>
             </div>
         </div>
 
@@ -132,44 +195,67 @@ export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loadi
              <div className="absolute -top-20 -left-20 w-96 h-96 bg-blue-500/5 rounded-full blur-[100px] pointer-events-none"></div>
              
              <div className="relative z-10 p-8">
-                <h3 className="text-3xl md:text-4xl font-bold text-white mb-12 leading-tight">
-                    {question.question}
-                </h3>
-
-                <div className="grid gap-5">
-                    {question.options.map((opt, idx) => {
-                        let btnClass = "w-full text-left p-6 rounded-2xl border transition-all duration-300 font-medium text-lg relative group overflow-hidden ";
-                        
-                        if (showExplanation) {
-                            if (idx === question.correctAnswer) btnClass += "bg-green-500/10 border-green-500/50 text-green-400";
-                            else if (selectedOption === idx) btnClass += "bg-red-500/10 border-red-500/50 text-red-400 opacity-60";
-                            else btnClass += "border-transparent bg-white/[0.02] opacity-30 text-gray-500";
-                        } else {
-                            if (selectedOption === idx) btnClass += "bg-brand-primary/20 border-brand-primary text-white shadow-[0_0_20px_rgba(139,92,246,0.2)]";
-                            else btnClass += "border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/[0.2] text-gray-300";
-                        }
-
-                        return (
-                            <button
-                                key={idx}
-                                onClick={() => !showExplanation && setSelectedOption(idx)}
-                                disabled={showExplanation}
-                                className={btnClass}
-                            >
-                                <div className="flex items-center gap-6 relative z-10">
-                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 transition-colors border
-                                        ${showExplanation && idx === question.correctAnswer ? 'bg-green-500 border-green-500 text-black' : 
-                                          selectedOption === idx && !showExplanation ? 'bg-brand-primary border-brand-primary text-white' :
-                                          'border-white/[0.1] text-gray-500 bg-transparent group-hover:border-white/[0.3]'}
-                                    `}>
-                                        {String.fromCharCode(65 + idx)}
-                                    </div>
-                                    {opt}
-                                </div>
-                            </button>
-                        );
-                    })}
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-3xl md:text-4xl font-bold text-white leading-tight flex-1">
+                        {question.question}
+                    </h3>
+                    {question.marks && (
+                        <div className="ml-4 px-4 py-2 bg-brand-primary/10 border border-brand-primary/20 rounded-xl">
+                            <span className="text-brand-primary font-bold text-sm">{question.marks} marks</span>
+                        </div>
+                    )}
                 </div>
+
+                {isSubjectiveQuestion ? (
+                    <div className="mt-8">
+                        <textarea
+                            value={textAnswer}
+                            onChange={(e) => setTextAnswer(e.target.value)}
+                            placeholder="Write your answer here..."
+                            disabled={showExplanation}
+                            className="w-full min-h-[300px] bg-white/[0.02] border border-white/[0.05] rounded-2xl p-6 text-white placeholder-gray-600 focus:outline-none focus:border-brand-primary/50 focus:bg-white/[0.03] transition-all resize-none"
+                        />
+                        <div className="mt-2 text-xs text-gray-500 flex items-center gap-2">
+                            <PenTool size={12} />
+                            <span>Write a detailed answer. Your response will be evaluated.</span>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="grid gap-5 mt-12">
+                        {question.options?.map((opt, idx) => {
+                            let btnClass = "w-full text-left p-6 rounded-2xl border transition-all duration-300 font-medium text-lg relative group overflow-hidden ";
+                            
+                            if (showExplanation) {
+                                if (idx === question.correctAnswer) btnClass += "bg-green-500/10 border-green-500/50 text-green-400";
+                                else if (selectedOption === idx) btnClass += "bg-red-500/10 border-red-500/50 text-red-400 opacity-60";
+                                else btnClass += "border-transparent bg-white/[0.02] opacity-30 text-gray-500";
+                            } else {
+                                if (selectedOption === idx) btnClass += "bg-brand-primary/20 border-brand-primary text-white shadow-[0_0_20px_rgba(139,92,246,0.2)]";
+                                else btnClass += "border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/[0.2] text-gray-300";
+                            }
+
+                            return (
+                                <button
+                                    key={idx}
+                                    onClick={() => !showExplanation && setSelectedOption(idx)}
+                                    disabled={showExplanation}
+                                    className={btnClass}
+                                >
+                                    <div className="flex items-center gap-6 relative z-10">
+                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 transition-colors border
+                                            ${showExplanation && idx === question.correctAnswer ? 'bg-green-500 border-green-500 text-black' : 
+                                              selectedOption === idx && !showExplanation ? 'bg-brand-primary border-brand-primary text-white' :
+                                              'border-white/[0.1] text-gray-500 bg-transparent group-hover:border-white/[0.3]'}
+                                        `}>
+                                            {String.fromCharCode(65 + idx)}
+                                        </div>
+                                        {opt}
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
         </GlassCard>
 
@@ -187,7 +273,7 @@ export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loadi
             {!showExplanation ? (
                 <button 
                     onClick={() => setShowExplanation(true)}
-                    disabled={selectedOption === null}
+                    disabled={isSubjectiveQuestion ? !textAnswer.trim() : selectedOption === null}
                     className="bg-white text-black px-12 py-5 rounded-2xl font-bold text-base hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_30px_rgba(255,255,255,0.1)]"
                 >
                     CONFIRM SELECTION
