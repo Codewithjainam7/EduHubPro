@@ -1,49 +1,85 @@
-import React, { useState } from 'react';
-import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
+import React, { useState, useEffect, useRef } from 'react';
 import { Layers, Shield, ScanFace, Chrome } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
 
 interface LoginViewProps {
-  onLogin: (username: string) => void;
+  onLogin: (username: string, userData?: any) => void;
+}
+
+declare global {
+  interface Window {
+    google: any;
+  }
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   const [mode, setMode] = useState<'GUEST' | 'GOOGLE'>('GOOGLE');
   const [codename, setCodename] = useState('');
-  const { login } = useAuth();
+  const googleButtonRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (mode === 'GOOGLE' && window.google) {
+      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+      
+      if (!clientId) {
+        console.error('Google Client ID not found');
+        return;
+      }
+
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleGoogleResponse,
+        auto_select: false,
+      });
+
+      if (googleButtonRef.current) {
+        window.google.accounts.id.renderButton(
+          googleButtonRef.current,
+          {
+            theme: 'filled_black',
+            size: 'large',
+            shape: 'pill',
+            width: 300,
+            text: 'signin_with',
+            logo_alignment: 'left',
+          }
+        );
+      }
+    }
+  }, [mode]);
+
+  const handleGoogleResponse = (response: any) => {
+    try {
+      const base64Url = response.credential.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c: string) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      
+      const userData = JSON.parse(jsonPayload);
+      
+      // Save to localStorage
+      localStorage.setItem('eduhub_user', JSON.stringify({
+        name: userData.name,
+        email: userData.email,
+        picture: userData.picture,
+        sub: userData.sub
+      }));
+      
+      onLogin(userData.name || userData.email.split('@')[0], userData);
+    } catch (error) {
+      console.error('Error parsing Google response:', error);
+      alert('Authentication failed. Please try again.');
+    }
+  };
 
   const handleGuestLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (codename.trim()) {
       onLogin(codename);
     }
-  };
-
-  const handleGoogleSuccess = (credentialResponse: CredentialResponse) => {
-    if (credentialResponse.credential) {
-      login(credentialResponse.credential);
-      
-      try {
-        const base64Url = credentialResponse.credential.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(
-          atob(base64)
-            .split('')
-            .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-            .join('')
-        );
-        
-        const userData = JSON.parse(jsonPayload);
-        onLogin(userData.name || userData.email.split('@')[0]);
-      } catch (e) {
-        console.error('Error parsing user data:', e);
-      }
-    }
-  };
-
-  const handleGoogleError = () => {
-    console.error('Google Login Failed');
-    alert('Google login failed. Please try again or use Guest mode.');
   };
 
   return (
@@ -98,26 +134,17 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                 <div className="min-h-[220px] flex flex-col justify-center">
                     {mode === 'GOOGLE' ? (
                         <div className="space-y-6 animate-fade-in">
-                            <div className="text-center mb-6">
+                            <div className="text-center mb-4">
                                 <h3 className="text-lg font-bold text-white mb-2">Sign in with Google</h3>
                                 <p className="text-xs text-white/50">
                                     Secure authentication via Google OAuth
                                 </p>
                             </div>
 
-                            <div className="flex justify-center">
-                                <GoogleLogin
-                                    onSuccess={handleGoogleSuccess}
-                                    onError={handleGoogleError}
-                                    useOneTap
-                                    theme="filled_black"
-                                    size="large"
-                                    shape="pill"
-                                    width="300"
-                                />
-                            </div>
+                            {/* Google Button Container */}
+                            <div ref={googleButtonRef} className="flex justify-center"></div>
 
-                            <p className="text-center text-[10px] text-gray-500 leading-relaxed px-4">
+                            <p className="text-center text-[10px] text-gray-500 leading-relaxed px-4 mt-4">
                                 Your data is encrypted and stored securely. We only access your basic profile information.
                             </p>
                         </div>
