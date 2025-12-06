@@ -360,19 +360,21 @@ export const generateQuestionBank = async (
             config: {
                 responseMimeType: "application/json",
                 responseSchema: schema,
-                temperature: 0.5, // Lower temperature for more factual extraction
+                temperature: 0.5,
             }
         });
         
         const text = response.text || '{"items": []}';
         const data = JSON.parse(cleanJson(text));
         
-        // OLD RETURN STATEMENT - DELETE THIS:
+        // NEW RETURN STATEMENT - PASTE THIS:
         return data.items.map((item: any, idx: number) => ({
             ...item,
             id: `gen-${idx}-${Date.now()}`,
+            // Remove options field if it exists (for subjective questions)
+            options: item.options && mode !== 'MCQ' ? undefined : item.options,
             // Normalize types
-            type: mode === 'QUESTION_BANK' ? (item.marks === 3 ? 'SHORT_ANSWER' : 'LONG_ANSWER') : mode 
+            type: mode === 'QUESTION_BANK' ? (item.marks <= 3 ? 'SHORT_ANSWER' : 'LONG_ANSWER') : mode 
         }));
     } catch (e) {
         console.error("Question Bank Generation Error", e);
