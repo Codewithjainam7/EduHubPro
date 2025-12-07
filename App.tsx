@@ -18,7 +18,6 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>(ViewState.DASHBOARD);
   const [loading, setLoading] = useState(false);
 
-  // --- MOCK STATE ---
   const [examInfo, setExamInfo] = useState<ExamDetails>({
     id: 'exam-1',
     name: 'Calculus Final',
@@ -27,39 +26,70 @@ const App: React.FC = () => {
     totalMarks: 100
   });
 
-  const [uploads, setUploads] = useState<UploadedFile[]>([
-    { id: '1', name: 'Calculus_Ch1_Limits.pdf', type: 'application/pdf', content: '...', date: new Date().toISOString(), status: 'ready', topics: ['Limits', 'Continuity'] },
-    { id: '2', name: 'Differentiation_Rules.docx', type: 'application/vnd', content: '...', date: new Date(Date.now() - 86400000).toISOString(), status: 'ready', topics: ['Power Rule', 'Chain Rule'] },
-    { id: '3', name: 'Integration_Techniques.pdf', type: 'application/pdf', content: '...', date: new Date(Date.now() - 172800000).toISOString(), status: 'ready', topics: ['Integration by Parts'] }
-  ]);
-  
-  // History of generated items
+  const [uploads, setUploads] = useState<UploadedFile[]>([]);
   const [generatedHistory, setGeneratedHistory] = useState<GeneratedSet[]>([]);
-
-  const [sessions, setSessions] = useState<StudySession[]>([
-    { id: '1', title: 'Limits & Continuity Deep Dive', topic: 'Calculus', date: new Date().toISOString(), durationMinutes: 45, type: 'STUDY', status: 'PENDING', description: 'Review Chapter 1 notes and solve 5 basic problems.' },
-    { id: '2', title: 'Differentiation Practice', topic: 'Calculus', date: new Date(Date.now() + 86400000).toISOString(), durationMinutes: 60, type: 'PRACTICE', status: 'PENDING', description: 'Focus on Chain rule application problems.' },
-    { id: '3', title: 'Weekend Mock Test #1', topic: 'Calculus', date: new Date(Date.now() + 172800000).toISOString(), durationMinutes: 90, type: 'MOCK_TEST', status: 'PENDING', description: 'Simulate exam conditions. No formula sheets.' }
-  ]);
-
+  const [sessions, setSessions] = useState<StudySession[]>([]);
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
-  
-  const [analytics] = useState<AnalyticsData[]>([
+  const [analytics, setAnalytics] = useState<AnalyticsData[]>([
     { topic: 'Limits', mastery: 92, hoursStudied: 12 },
     { topic: 'Differentiation', mastery: 78, hoursStudied: 15 },
     { topic: 'Integration', mastery: 45, hoursStudied: 4 }, 
     { topic: 'Applications', mastery: 60, hoursStudied: 6 },
   ]);
 
-  // --- HANDLERS ---
- const handleLogin = (username: string, userData?: any) => {
-  setUser(username);
-  if (userData) {
-    // Store Google user data
-    localStorage.setItem('eduhub_user', JSON.stringify(userData));
-  }
-  setPhase('BOOTING');
-};
+  // Load persisted data on mount
+  useEffect(() => {
+    const savedUser = localStorage.getItem('eduhub_user') || localStorage.getItem('eduhub_guest');
+    if (savedUser) {
+      try {
+        const userData = localStorage.getItem('eduhub_user') ? JSON.parse(savedUser) : null;
+        const username = userData ? (userData.name || userData.email) : savedUser;
+        
+        setUser(username);
+        setPhase('BOOTING');
+        
+        // Load all persisted data
+        const savedUploads = localStorage.getItem('eduhub_uploads');
+        const savedHistory = localStorage.getItem('eduhub_history');
+        const savedSessions = localStorage.getItem('eduhub_sessions');
+        const savedQuizzes = localStorage.getItem('eduhub_quizzes');
+        const savedAnalytics = localStorage.getItem('eduhub_analytics');
+        const savedExam = localStorage.getItem('eduhub_exam');
+        
+        if (savedUploads) setUploads(JSON.parse(savedUploads));
+        if (savedHistory) setGeneratedHistory(JSON.parse(savedHistory));
+        if (savedSessions) setSessions(JSON.parse(savedSessions));
+        if (savedQuizzes) setQuizzes(JSON.parse(savedQuizzes));
+        if (savedAnalytics) setAnalytics(JSON.parse(savedAnalytics));
+        if (savedExam) setExamInfo(JSON.parse(savedExam));
+      } catch (e) {
+        console.error('Error loading saved data:', e);
+      }
+    }
+  }, []);
+
+  // Persist data whenever it changes
+  useEffect(() => {
+    if (phase === 'APP') {
+      localStorage.setItem('eduhub_uploads', JSON.stringify(uploads));
+      localStorage.setItem('eduhub_history', JSON.stringify(generatedHistory));
+      localStorage.setItem('eduhub_sessions', JSON.stringify(sessions));
+      localStorage.setItem('eduhub_quizzes', JSON.stringify(quizzes));
+      localStorage.setItem('eduhub_analytics', JSON.stringify(analytics));
+      localStorage.setItem('eduhub_exam', JSON.stringify(examInfo));
+    }
+  }, [uploads, generatedHistory, sessions, quizzes, analytics, examInfo, phase]);
+
+  const handleLogin = (username: string, userData?: any) => {
+    setUser(username);
+    if (userData) {
+      localStorage.setItem('eduhub_user', JSON.stringify(userData));
+    } else {
+      localStorage.setItem('eduhub_guest', username);
+    }
+    setPhase('BOOTING');
+  };
+
   const handleInstantFlashcards = async () => {
     if (uploads.length === 0) {
       alert('Please upload study materials first!');
@@ -75,7 +105,7 @@ const App: React.FC = () => {
       return;
     }
     
-    // Generate flashcards using the FLASHCARD mode
+    const { generateQuestionBank } = await import('./services/geminiService');
     const flashcards = await generateQuestionBank(latestUpload.content, 'FLASHCARD');
     
     if (flashcards.length > 0) {
@@ -89,8 +119,6 @@ const App: React.FC = () => {
       };
       
       handleAddToHistory(newSet);
-      
-      // Switch to uploads view to see the result
       setCurrentView(ViewState.UPLOADS);
       alert(`✨ Created ${flashcards.length} flashcards! Check the History tab in Question Forge.`);
     } else {
@@ -105,9 +133,22 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('eduhub_user');
+    localStorage.removeItem('eduhub_guest');
+    localStorage.removeItem('eduhub_uploads');
+    localStorage.removeItem('eduhub_history');
+    localStorage.removeItem('eduhub_sessions');
+    localStorage.removeItem('eduhub_quizzes');
+    localStorage.removeItem('eduhub_analytics');
+    localStorage.removeItem('eduhub_exam');
+    
     setPhase('LOGIN');
     setUser('');
     setCurrentView(ViewState.DASHBOARD);
+    setUploads([]);
+    setGeneratedHistory([]);
+    setSessions([]);
+    setQuizzes([]);
   };
 
   const handleUpload = (file: UploadedFile) => {
@@ -115,7 +156,7 @@ const App: React.FC = () => {
   };
   
   const handleAddToHistory = (set: GeneratedSet) => {
-      setGeneratedHistory([set, ...generatedHistory]);
+    setGeneratedHistory([set, ...generatedHistory]);
   };
 
   const handleGenerateQuiz = async () => {
@@ -125,7 +166,6 @@ const App: React.FC = () => {
     }
     setLoading(true);
     
-    // Use the most recent upload
     const latestUpload = uploads[0];
     
     if (latestUpload.status === 'error') {
@@ -136,33 +176,13 @@ const App: React.FC = () => {
     
     const quiz = await generateQuizFromContent(latestUpload.content, latestUpload.name);
     if (quiz) {
-        setQuizzes([quiz, ...quizzes]);
-        // Auto-switch to quiz view
-        setCurrentView(ViewState.QUIZ);
+      setQuizzes([quiz, ...quizzes]);
+      setCurrentView(ViewState.QUIZ);
     } else {
       alert('Failed to generate quiz. Please try again.');
     }
     setLoading(false);
   };
-  const updateAnalyticsFromUploads = () => {
-    // Generate analytics based on uploaded files
-    const allTopics = uploads.flatMap(u => u.topics).filter(Boolean);
-    const uniqueTopics = [...new Set(allTopics)];
-    
-    // Create mock analytics for demonstration
-    const newAnalytics = uniqueTopics.slice(0, 6).map(topic => ({
-      topic,
-      mastery: Math.floor(Math.random() * 40) + 40, // Random between 40-80
-      hoursStudied: Math.floor(Math.random() * 10) + 2
-    }));
-    
-    if (newAnalytics.length > 0) {
-      // Note: In a real app, you'd update state here
-      // For now, we'll keep the existing analytics
-      console.log('Analytics would be updated with:', newAnalytics);
-    }
-  };
-
 
   const handleGenerateRoadmap = async () => {
     if (uploads.length === 0) {
@@ -181,17 +201,15 @@ const App: React.FC = () => {
     }
     
     const newSessions = await generateSmartRoadmap(
-        topics, 
-        examInfo.name, 
-        examInfo.date, 
-        new Date().toISOString().split('T')[0],
-        weakAreas
+      topics, 
+      examInfo.name, 
+      examInfo.date, 
+      new Date().toISOString().split('T')[0],
+      weakAreas
     );
 
     if (newSessions.length > 0) {
-        setSessions(newSessions);
-        // Update analytics based on uploaded topics
-        updateAnalyticsFromUploads();
+      setSessions(newSessions);
     }
     setLoading(false);
   };
@@ -201,21 +219,40 @@ const App: React.FC = () => {
   const renderContent = () => {
     switch (currentView) {
       case ViewState.DASHBOARD:
-        return <Dashboard sessions={sessions} analytics={analytics} recentUploads={uploads} examName={examInfo.name} daysUntilExam={daysUntilExam} username={user} onInstantFlashcards={handleInstantFlashcards} loading={loading} />;
+        return <Dashboard 
+          sessions={sessions} 
+          analytics={analytics} 
+          recentUploads={uploads} 
+          examName={examInfo.name} 
+          daysUntilExam={daysUntilExam} 
+          username={user} 
+          onInstantFlashcards={handleInstantFlashcards} 
+          loading={loading}
+          onUpload={handleUpload}
+        />;
       case ViewState.UPLOADS:
         return <UploadView files={uploads} onUpload={handleUpload} history={generatedHistory} onAddToHistory={handleAddToHistory} />;
       case ViewState.ROADMAP:
         return <RoadmapView sessions={sessions} generatePlan={handleGenerateRoadmap} loading={loading} />;
       case ViewState.QUIZ:
-        return <QuizView quizzes={quizzes} onCreateQuiz={handleGenerateQuiz} loading={loading} />;
+        return <QuizView quizzes={quizzes} onCreateQuiz={handleGenerateQuiz} loading={loading} uploads={uploads} />;
       case ViewState.ANALYTICS:
         return <AnalyticsView data={analytics} />;
       default:
-        return <Dashboard sessions={sessions} analytics={analytics} recentUploads={uploads} examName={examInfo.name} daysUntilExam={daysUntilExam} username={user} />;
+        return <Dashboard 
+          sessions={sessions} 
+          analytics={analytics} 
+          recentUploads={uploads} 
+          examName={examInfo.name} 
+          daysUntilExam={daysUntilExam} 
+          username={user}
+          onInstantFlashcards={handleInstantFlashcards}
+          loading={loading}
+          onUpload={handleUpload}
+        />;
     }
   };
 
-  // Generate random stars for background
   const [stars, setStars] = useState<{id: number, top: string, left: string, delay: string, duration: string}[]>([]);
   useEffect(() => {
     const newStars = Array.from({ length: 50 }, (_, i) => ({
@@ -230,9 +267,8 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen relative overflow-x-hidden bg-void selection:bg-brand-indigo/30">
+    <div className="min-h-screen relative overflow-x-hidden bg-void selection:bg-brand-indigo/30 cursor-custom">
       
-      {/* --- BACKGROUND ANIMATIONS (PERSISTENT) --- */}
       <div className="bg-grid-container">
         <div className="bg-grid"></div>
       </div>
@@ -255,8 +291,6 @@ const App: React.FC = () => {
       <div className="aurora-blob w-[500px] h-[500px] bg-brand-violet/20 top-[-100px] left-[10%] animate-pulse-slow"></div>
       <div className="aurora-blob w-[400px] h-[400px] bg-brand-indigo/20 bottom-[-100px] right-[10%] animate-float" style={{animationDelay: '-2s'}}></div>
       
-      {/* --- PHASE RENDERING --- */}
-
       {phase === 'LOGIN' && (
          <LoginView onLogin={handleLogin} />
       )}
@@ -267,10 +301,10 @@ const App: React.FC = () => {
 
       {phase === 'APP' && (
         <>
-            <Sidebar currentView={currentView} setView={setCurrentView} user={user} onLogout={handleLogout} />
-            <main className="pt-24 px-4 md:px-8 pb-8 transition-all duration-300 relative z-10">
-                {renderContent()}
-            </main>
+          <Sidebar currentView={currentView} setView={setCurrentView} user={user} onLogout={handleLogout} />
+          <main className="pt-24 px-4 md:px-8 pb-8 transition-all duration-300 relative z-10">
+            {renderContent()}
+          </main>
         </>
       )}
 
