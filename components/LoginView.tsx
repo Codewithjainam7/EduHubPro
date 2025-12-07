@@ -14,10 +14,23 @@ declare global {
 export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   const [mode, setMode] = useState<'GUEST' | 'GOOGLE'>('GOOGLE');
   const [codename, setCodename] = useState('');
+  const [googleLoaded, setGoogleLoaded] = useState(false);
   const googleButtonRef = useRef<HTMLDivElement>(null);
 
+  // Wait for Google script to load
   useEffect(() => {
-    if (mode === 'GOOGLE' && window.google) {
+    const checkGoogle = setInterval(() => {
+      if (window.google?.accounts?.id) {
+        setGoogleLoaded(true);
+        clearInterval(checkGoogle);
+      }
+    }, 100);
+
+    return () => clearInterval(checkGoogle);
+  }, []);
+
+  useEffect(() => {
+    if (mode === 'GOOGLE' && googleLoaded && googleButtonRef.current) {
       const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
       
       if (!clientId) {
@@ -25,13 +38,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         return;
       }
 
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: handleGoogleResponse,
-        auto_select: false,
-      });
+      try {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleGoogleResponse,
+          auto_select: false,
+        });
 
-      if (googleButtonRef.current) {
         window.google.accounts.id.renderButton(
           googleButtonRef.current,
           {
@@ -43,9 +56,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
             logo_alignment: 'left',
           }
         );
+      } catch (error) {
+        console.error('Error initializing Google Sign-In:', error);
       }
     }
-  }, [mode]);
+  }, [mode, googleLoaded]);
 
   const handleGoogleResponse = (response: any) => {
     try {
@@ -60,7 +75,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
       
       const userData = JSON.parse(jsonPayload);
       
-      // Save to localStorage
       localStorage.setItem('eduhub_user', JSON.stringify({
         name: userData.name,
         email: userData.email,
@@ -78,6 +92,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   const handleGuestLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (codename.trim()) {
+      localStorage.setItem('eduhub_guest', codename);
       onLogin(codename);
     }
   };
@@ -90,7 +105,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
 
             <div className="relative bg-black/40 backdrop-blur-3xl border border-white/10 rounded-[44px] overflow-hidden shadow-2xl ring-1 ring-white/5 p-8 flex flex-col gap-6 animate-slide-up">
                 
-                {/* Header */}
                 <div className="flex flex-col items-center gap-4 pt-2">
                     <div className="w-20 h-20 rounded-[24px] bg-gradient-to-br from-white/10 to-white/5 border border-white/20 flex items-center justify-center shadow-lg relative group overflow-hidden">
                          <div className="absolute inset-0 bg-gradient-to-tr from-brand-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -106,7 +120,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                     </div>
                 </div>
 
-                {/* Segmented Control */}
                 <div className="bg-black/30 p-1 rounded-full flex relative h-10">
                      <div 
                         className={`absolute top-1 bottom-1 rounded-full bg-white/10 border border-white/5 shadow-sm transition-all duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]`}
@@ -130,7 +143,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                      </button>
                 </div>
 
-                {/* Content */}
                 <div className="min-h-[220px] flex flex-col justify-center">
                     {mode === 'GOOGLE' ? (
                         <div className="space-y-6 animate-fade-in">
@@ -141,8 +153,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                                 </p>
                             </div>
 
-                            {/* Google Button Container */}
-                            <div ref={googleButtonRef} className="flex justify-center"></div>
+                            {googleLoaded ? (
+                              <div ref={googleButtonRef} className="flex justify-center"></div>
+                            ) : (
+                              <div className="flex justify-center">
+                                <div className="w-8 h-8 border-2 border-white/20 border-t-brand-primary rounded-full animate-spin"></div>
+                              </div>
+                            )}
 
                             <p className="text-center text-[10px] text-gray-500 leading-relaxed px-4 mt-4">
                                 Your data is encrypted and stored securely. We only access your basic profile information.
@@ -165,7 +182,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                                      />
                                 </div>
                                 <p className="text-center text-[10px] text-gray-500 leading-relaxed px-4">
-                                    Guest Mode: Data is stored locally and clears upon exit.
+                                    Guest Mode: Data is stored locally and persists between sessions.
                                 </p>
                             </div>
                             
@@ -180,7 +197,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                     )}
                 </div>
 
-                {/* Footer */}
                 <div className="flex items-center justify-between text-[10px] text-white/20 font-medium uppercase tracking-widest pt-1 px-1">
                     <span className="flex items-center gap-1.5"><Shield size={10} /> Encrypted Session</span>
                     <span>v2.5.0</span>
