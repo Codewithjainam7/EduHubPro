@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { GlassCard } from './ui/GlassCard';
 import { StudySession, UploadedFile, AnalyticsData } from '../types';
 import { 
   Calendar, Clock, AlertCircle, Zap, Target, Activity, 
-  Cpu, Database, ShieldCheck, ChevronRight, Play, MoreHorizontal 
+  Cpu, Database, ShieldCheck, Play, MoreHorizontal, Upload, FileText, Loader2
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -15,19 +15,83 @@ interface DashboardProps {
   username?: string;
   onInstantFlashcards: () => void;
   loading: boolean;
+  onUpload: (file: UploadedFile) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ sessions, analytics, recentUploads, examName, daysUntilExam, username = 'Alex_Dev', onInstantFlashcards, loading }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ 
+  sessions, 
+  analytics, 
+  recentUploads, 
+  examName, 
+  daysUntilExam, 
+  username = 'Alex_Dev', 
+  onInstantFlashcards, 
+  loading,
+  onUpload
+}) => {
   const nextSession = sessions.find(s => s.status === 'PENDING');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
   
   const overallMastery = analytics.length > 0 
     ? Math.round(analytics.reduce((acc, curr) => acc + curr.mastery, 0) / analytics.length)
     : 0;
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    
+    const { analyzeDocument } = await import('../services/geminiService');
+    const result = await analyzeDocument(file);
+
+    if (result && !('error' in result)) {
+      const successData = result as { text: string, topics: string[], analysis: any };
+      
+      const newFile: UploadedFile = {
+        id: crypto.randomUUID(),
+        name: file.name,
+        content: successData.text,
+        type: file.type,
+        date: new Date().toISOString(),
+        status: 'ready',
+        topics: successData.topics,
+        analysis: successData.analysis
+      };
+      
+      onUpload(newFile);
+      alert(`✅ ${file.name} uploaded successfully!`);
+    } else {
+      const errorMsg = (result && 'error' in result) ? result.error : 'Upload failed';
+      
+      const errorFile: UploadedFile = {
+        id: crypto.randomUUID(),
+        name: file.name,
+        content: errorMsg,
+        type: file.type,
+        date: new Date().toISOString(),
+        status: 'error',
+        topics: ['Upload Failed'],
+        analysis: {
+          summary: errorMsg,
+          keyConcepts: [],
+          definitions: [],
+          formulas: []
+        }
+      };
+      
+      onUpload(errorFile);
+      alert(`❌ ${errorMsg}`);
+    }
+
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   return (
     <div className="max-w-[1600px] mx-auto pt-4 pb-12 animate-fade-in space-y-8">
       
-      {/* Header Section */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end px-2 mb-2 gap-4">
         <div>
            <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-white to-white/60 tracking-tight mb-2">
@@ -44,7 +108,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, analytics, recen
            </div>
         </div>
         
-        {/* Date/Time Widget */}
         <div className="hidden md:flex flex-col items-end">
            <div className="px-5 py-2 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md text-right">
               <div className="text-2xl font-bold text-white tracking-tight leading-none">
@@ -57,13 +120,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, analytics, recen
         </div>
       </header>
 
-      {/* BENTO GRID LAYOUT */}
       <div className="grid grid-cols-1 md:grid-cols-6 lg:grid-cols-12 gap-6 h-auto lg:h-[580px]">
         
-        {/* 1. HERO GAUGE (Large Square) */}
         <div className="md:col-span-3 lg:col-span-4 h-full">
             <GlassCard className="h-full flex flex-col items-center justify-center relative group overflow-hidden min-h-[400px] md:min-h-0">
-                {/* Background Ambient Glow */}
                 <div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-gradient-to-b from-brand-indigo/10 to-transparent rounded-full blur-[80px] opacity-50 group-hover:opacity-80 transition-opacity duration-1000"></div>
 
                 <div className="absolute top-6 left-6 right-6 flex justify-between items-start z-10">
@@ -76,12 +136,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, analytics, recen
                     </div>
                 </div>
                 
-                {/* Modern Gauge */}
                 <div className="relative w-64 h-64 mt-4">
                     <svg className="w-full h-full transform -rotate-90">
-                        {/* Track */}
                         <circle cx="50%" cy="50%" r="42%" stroke="rgba(255,255,255,0.05)" strokeWidth="16" fill="none" strokeLinecap="round" />
-                        {/* Fill */}
                         <circle 
                           cx="50%" cy="50%" r="42%" 
                           stroke="url(#gradient-gauge)" 
@@ -99,7 +156,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, analytics, recen
                         </defs>
                     </svg>
                     
-                    {/* Inner Text Content */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                         <span className="text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-white to-white/50 tracking-tighter tabular-nums">
                            {overallMastery}
@@ -115,9 +171,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, analytics, recen
             </GlassCard>
         </div>
 
-        {/* 2. CENTER STACK */}
         <div className="md:col-span-3 lg:col-span-5 flex flex-col gap-6 h-full">
-            {/* Countdown Pill */}
             <GlassCard className="flex-none py-5 px-6 flex items-center justify-between bg-gradient-to-r from-brand-rose/10 to-transparent border-brand-rose/20" tiltEnabled={false}>
                 <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-brand-rose/10 flex items-center justify-center border border-brand-rose/20 shadow-[0_0_15px_rgba(244,63,94,0.2)]">
@@ -134,9 +188,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, analytics, recen
                 </div>
             </GlassCard>
 
-            {/* Current Task Widget */}
             <GlassCard className="flex-1 flex flex-col relative group min-h-[250px] md:min-h-0">
-                 {/* Decorative background blob */}
                  <div className="absolute top-0 right-0 w-64 h-64 bg-brand-emerald/10 rounded-full blur-[80px] pointer-events-none opacity-50"></div>
 
                  <div className="relative z-10 flex flex-col h-full justify-between">
@@ -176,10 +228,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, analytics, recen
             </GlassCard>
         </div>
 
-        {/* 3. METRIC STACK (Vertical Widgets) */}
         <div className="md:col-span-6 lg:col-span-3 flex flex-col md:flex-row lg:flex-col gap-6 h-full">
             
-            {/* Metric 1 - XP */}
             <GlassCard className="flex-1 flex flex-col justify-between p-5 relative overflow-hidden bg-gradient-to-br from-white/[0.03] to-white/[0.01] min-h-[140px] md:min-h-0">
                 <div className="flex justify-between items-start">
                     <div className="w-8 h-8 rounded-lg bg-brand-violet/10 flex items-center justify-center text-brand-violet border border-brand-violet/20">
@@ -195,7 +245,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, analytics, recen
                 </div>
             </GlassCard>
 
-            {/* Metric 2 - Retention */}
             <GlassCard className="flex-1 flex flex-col justify-between p-5 relative overflow-hidden bg-gradient-to-br from-white/[0.03] to-white/[0.01] min-h-[140px] md:min-h-0">
                 <div className="flex justify-between items-start">
                     <div className="w-8 h-8 rounded-lg bg-brand-emerald/10 flex items-center justify-center text-brand-emerald border border-brand-emerald/20">
@@ -211,7 +260,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, analytics, recen
                 </div>
             </GlassCard>
 
-            {/* Metric 3 - Nodes */}
             <GlassCard className="flex-1 flex flex-col justify-between p-5 relative overflow-hidden bg-gradient-to-br from-white/[0.03] to-white/[0.01] min-h-[140px] md:min-h-0">
                 <div className="flex justify-between items-start">
                     <div className="w-8 h-8 rounded-lg bg-brand-indigo/10 flex items-center justify-center text-brand-indigo border border-brand-indigo/20">
@@ -231,9 +279,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, analytics, recen
 
       </div>
 
-      {/* SECONDARY ROW */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-           {/* Timeline - Styled like Notifications */}
            <GlassCard className="col-span-2 min-h-[240px] flex flex-col" noPadding>
                <div className="flex justify-between items-center p-6 border-b border-white/[0.05]">
                    <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
@@ -244,7 +290,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, analytics, recen
                </div>
                
                <div className="flex-1 overflow-hidden p-2">
-                   {sessions.slice(0,3).map((session, i) => (
+                   {sessions.slice(0,3).map((session) => (
                        <div key={session.id} className="flex items-center gap-4 p-4 rounded-2xl hover:bg-white/[0.03] transition-colors group cursor-pointer border border-transparent hover:border-white/[0.05]">
                            <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center justify-center text-center shadow-inner">
                                <div className="text-[9px] text-white/40 font-bold uppercase">{new Date(session.date).toLocaleString('default', {month:'short'})}</div>
@@ -272,20 +318,36 @@ export const Dashboard: React.FC<DashboardProps> = ({ sessions, analytics, recen
                </div>
            </GlassCard>
 
-           {/* Quick Action - Large Control Center Button */}
            <GlassCard className="relative overflow-hidden group flex flex-col items-center justify-center text-center p-8 cursor-pointer hover:border-white/20 transition-all">
+               <input 
+                 ref={fileInputRef}
+                 type="file"
+                 className="hidden"
+                 accept=".pdf,.txt,.doc,.docx,.jpg,.png,.pptx"
+                 onChange={handleFileSelect}
+               />
                <div className="absolute inset-0 bg-gradient-to-t from-brand-indigo/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
                
                <div className="w-20 h-20 rounded-[28px] bg-gradient-to-br from-white/10 to-white/5 border border-white/20 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:shadow-[0_0_40px_rgba(255,255,255,0.15)] transition-all duration-500 shadow-2xl relative">
-                   <Zap size={36} className="text-white relative z-10" fill="currentColor" />
+                   {uploading ? (
+                     <Loader2 size={36} className="text-white animate-spin relative z-10" />
+                   ) : (
+                     <Upload size={36} className="text-white relative z-10" />
+                   )}
                    <div className="absolute inset-0 bg-white/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
                </div>
                
-               <h3 className="text-xl font-bold text-white mb-2">Instant Flashcards</h3>
-               <p className="text-sm text-white/50 mb-6 max-w-[200px] leading-relaxed">Create a quick study set from your recent uploads.</p>
+               <h3 className="text-xl font-bold text-white mb-2">Upload Study Material</h3>
+               <p className="text-sm text-white/50 mb-6 max-w-[200px] leading-relaxed">
+                 Upload PDF, DOCX, PPTX, or images
+               </p>
                
-               <button className="w-full py-3.5 rounded-xl bg-white text-black font-bold text-xs uppercase tracking-widest hover:bg-gray-200 transition-colors shadow-lg active:scale-[0.98]">
-                   Create Set
+               <button 
+                 onClick={() => fileInputRef.current?.click()}
+                 disabled={uploading}
+                 className="w-full py-3.5 rounded-xl bg-white text-black font-bold text-xs uppercase tracking-widest hover:bg-gray-200 transition-colors shadow-lg active:scale-[0.98] disabled:opacity-50"
+               >
+                 {uploading ? 'Uploading...' : 'Select File'}
                </button>
            </GlassCard>
       </div>
