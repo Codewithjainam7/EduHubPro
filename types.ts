@@ -1,4 +1,3 @@
-
 export enum ViewState {
   DASHBOARD = 'DASHBOARD',
   UPLOADS = 'UPLOADS',
@@ -11,7 +10,7 @@ export enum ViewState {
 export interface ExamDetails {
   id: string;
   name: string;
-  date: string; // ISO date
+  date: string;
   targetScore: number;
   totalMarks: number;
 }
@@ -27,18 +26,18 @@ export interface UploadedFile {
   id: string;
   name: string;
   type: string;
-  content: string; // The full extracted text
+  content: string;
   date: string;
   status: 'processing' | 'ready' | 'error';
   topics: string[];
-  analysis?: DocumentAnalysis; // Structured data from Gemini
+  analysis?: DocumentAnalysis;
 }
 
 export interface QuizQuestion {
   id: string;
   question: string;
   options: string[];
-  correctAnswer: number; // Index
+  correctAnswer: number;
   explanation: string;
   userAnswer?: number;
 }
@@ -57,7 +56,7 @@ export interface StudySession {
   id: string;
   title: string;
   topic: string;
-  date: string; // ISO date string with time
+  date: string;
   durationMinutes: number;
   type: 'STUDY' | 'PRACTICE' | 'QUIZ' | 'REVISION' | 'MOCK_TEST';
   status: 'PENDING' | 'COMPLETED' | 'MISSED';
@@ -67,7 +66,7 @@ export interface StudySession {
 
 export interface AnalyticsData {
   topic: string;
-  mastery: number; // 0-100
+  mastery: number;
   hoursStudied: number;
 }
 
@@ -94,7 +93,7 @@ export interface GeneratedSet {
 
 export interface QuestionBankConfig {
   mode: GeneratorMode;
-  shortQuestions?: number; // 3 marks
-  longQuestions?: number; // 6 marks
+  shortQuestions?: number;
+  longQuestions?: number;
   totalMarks?: number;
 }
