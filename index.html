@@ -17,16 +17,16 @@
               mono: ['JetBrains Mono', 'monospace'],
             },
             colors: {
-              void: '#020410', // Deep Midnight Blue
+              void: '#020410',
               glass: {
                 base: 'rgba(255, 255, 255, 0.03)',
                 border: 'rgba(255, 255, 255, 0.08)',
                 highlight: 'rgba(255, 255, 255, 0.15)',
               },
               brand: {
-                indigo: '#3b82f6', // Electric Blue (Primary)
-                violet: '#06b6d4', // Cyan (Secondary)
-                primary: '#3b82f6', // Alias for components using primary
+                indigo: '#3b82f6',
+                violet: '#06b6d4',
+                primary: '#3b82f6',
                 emerald: '#10b981',
                 rose: '#f43f5e',
                 accent: '#06b6d4'
@@ -84,6 +84,35 @@
         overflow-x: hidden;
         color: #F8FAFC;
         -webkit-font-smoothing: antialiased;
+        cursor: none;
+      }
+
+      /* Custom Cursor */
+      .cursor-custom {
+        cursor: none !important;
+      }
+      
+      .cursor-custom * {
+        cursor: none !important;
+      }
+
+      #custom-cursor {
+        width: 20px;
+        height: 20px;
+        border: 2px solid #3b82f6;
+        border-radius: 50%;
+        position: fixed;
+        pointer-events: none;
+        z-index: 99999;
+        transition: transform 0.15s ease-out, background-color 0.2s ease;
+        transform: translate(-50%, -50%);
+        mix-blend-mode: screen;
+      }
+
+      #custom-cursor.hover {
+        transform: translate(-50%, -50%) scale(2);
+        background-color: rgba(59, 130, 246, 0.2);
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
       }
 
       /* Scrollbar */
@@ -92,7 +121,6 @@
       ::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.3); border-radius: 2px; }
       ::-webkit-scrollbar-thumb:hover { background: rgba(59, 130, 246, 0.6); }
       
-      /* Tilt Card 3D Context */
       .tilt-card {
         transform-style: preserve-3d;
         transform: perspective(1000px);
@@ -101,7 +129,6 @@
         transform: translateZ(20px);
       }
       
-      /* Aurora Blobs */
       .aurora-blob {
         position: fixed;
         border-radius: 50%;
@@ -111,7 +138,6 @@
         animation: float 10s infinite ease-in-out;
       }
 
-      /* Moving Grid Background */
       .bg-grid-container {
         position: fixed;
         top: 0;
@@ -139,7 +165,6 @@
         mask-image: radial-gradient(circle at center, black 30%, transparent 70%);
       }
 
-      /* Stars */
       .star {
         position: fixed;
         background: white;
@@ -147,25 +172,25 @@
         pointer-events: none;
         z-index: -1;
       }
-      /* Custom Scrollbar for Calendar */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
 
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-}
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(59, 130, 246, 0.3);
-  border-radius: 4px;
-}
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 4px;
+      }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(59, 130, 246, 0.5);
-}
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(59, 130, 246, 0.3);
+        border-radius: 4px;
+      }
+
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: rgba(59, 130, 246, 0.5);
+      }
     </style>
   <script type="importmap">
 {
@@ -182,7 +207,44 @@
 </script>
 </head>
   <body>
+    <div id="custom-cursor"></div>
     <div id="root"></div>
+    <script>
+      const cursor = document.getElementById('custom-cursor');
+      let mouseX = 0, mouseY = 0;
+      let cursorX = 0, cursorY = 0;
+
+      document.addEventListener('mousemove', (e) => {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+      });
+
+      function animateCursor() {
+        const dx = mouseX - cursorX;
+        const dy = mouseY - cursorY;
+        
+        cursorX += dx * 0.15;
+        cursorY += dy * 0.15;
+        
+        cursor.style.left = cursorX + 'px';
+        cursor.style.top = cursorY + 'px';
+        
+        requestAnimationFrame(animateCursor);
+      }
+      animateCursor();
+
+      document.addEventListener('mouseenter', (e) => {
+        if (e.target.matches('button, a, input, [role="button"], .cursor-hover')) {
+          cursor.classList.add('hover');
+        }
+      }, true);
+
+      document.addEventListener('mouseleave', (e) => {
+        if (e.target.matches('button, a, input, [role="button"], .cursor-hover')) {
+          cursor.classList.remove('hover');
+        }
+      }, true);
+    </script>
   <script type="module" src="/index.tsx"></script>
 </body>
 </html>
