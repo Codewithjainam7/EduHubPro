@@ -43,46 +43,51 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     setUploading(true);
     
-    const { analyzeDocument } = await import('../services/geminiService');
-    const result = await analyzeDocument(file);
+    try {
+      const { analyzeDocument } = await import('../services/geminiService');
+      const result = await analyzeDocument(file);
 
-    if (result && !('error' in result)) {
-      const successData = result as { text: string, topics: string[], analysis: any };
-      
-      const newFile: UploadedFile = {
-        id: crypto.randomUUID(),
-        name: file.name,
-        content: successData.text,
-        type: file.type,
-        date: new Date().toISOString(),
-        status: 'ready',
-        topics: successData.topics,
-        analysis: successData.analysis
-      };
-      
-      onUpload(newFile);
-      alert(`✅ ${file.name} uploaded successfully!`);
-    } else {
-      const errorMsg = (result && 'error' in result) ? result.error : 'Upload failed';
-      
-      const errorFile: UploadedFile = {
-        id: crypto.randomUUID(),
-        name: file.name,
-        content: errorMsg,
-        type: file.type,
-        date: new Date().toISOString(),
-        status: 'error',
-        topics: ['Upload Failed'],
-        analysis: {
-          summary: errorMsg,
-          keyConcepts: [],
-          definitions: [],
-          formulas: []
-        }
-      };
-      
-      onUpload(errorFile);
-      alert(`❌ ${errorMsg}`);
+      if (result && !('error' in result)) {
+        const successData = result as { text: string, topics: string[], analysis: any };
+        
+        const newFile: UploadedFile = {
+          id: crypto.randomUUID(),
+          name: file.name,
+          content: successData.text,
+          type: file.type,
+          date: new Date().toISOString(),
+          status: 'ready',
+          topics: successData.topics,
+          analysis: successData.analysis
+        };
+        
+        onUpload(newFile);
+        alert(`✅ ${file.name} uploaded successfully!`);
+      } else {
+        const errorMsg = (result && 'error' in result) ? result.error : 'Upload failed';
+        
+        const errorFile: UploadedFile = {
+          id: crypto.randomUUID(),
+          name: file.name,
+          content: errorMsg,
+          type: file.type,
+          date: new Date().toISOString(),
+          status: 'error',
+          topics: ['Upload Failed'],
+          analysis: {
+            summary: errorMsg,
+            keyConcepts: [],
+            definitions: [],
+            formulas: []
+          }
+        };
+        
+        onUpload(errorFile);
+        alert(`❌ ${errorMsg}`);
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('An error occurred during upload. Please try again.');
     }
 
     setUploading(false);
@@ -318,38 +323,33 @@ export const Dashboard: React.FC<DashboardProps> = ({
                </div>
            </GlassCard>
 
-           <GlassCard className="relative overflow-hidden group flex flex-col items-center justify-center text-center p-8 cursor-pointer hover:border-white/20 transition-all">
+           <div onClick={() => !uploading && fileInputRef.current?.click()} className="relative overflow-hidden rounded-[32px] bg-black/20 backdrop-blur-3xl border border-white/[0.08] p-8 cursor-pointer hover:border-white/20 transition-all flex flex-col items-center justify-center text-center">
                <input 
                  ref={fileInputRef}
                  type="file"
                  className="hidden"
                  accept=".pdf,.txt,.doc,.docx,.jpg,.png,.pptx"
                  onChange={handleFileSelect}
+                 disabled={uploading}
                />
-               <div className="absolute inset-0 bg-gradient-to-t from-brand-indigo/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
                
-               <div className="w-20 h-20 rounded-[28px] bg-gradient-to-br from-white/10 to-white/5 border border-white/20 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:shadow-[0_0_40px_rgba(255,255,255,0.15)] transition-all duration-500 shadow-2xl relative">
+               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 border border-white/20 flex items-center justify-center mb-6 transition-all duration-500 shadow-2xl">
                    {uploading ? (
-                     <Loader2 size={36} className="text-white animate-spin relative z-10" />
+                     <Loader2 size={28} className="text-white animate-spin" />
                    ) : (
-                     <Upload size={36} className="text-white relative z-10" />
+                     <Upload size={28} className="text-white" />
                    )}
-                   <div className="absolute inset-0 bg-white/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
                </div>
                
-               <h3 className="text-xl font-bold text-white mb-2">Upload Study Material</h3>
-               <p className="text-sm text-white/50 mb-6 max-w-[200px] leading-relaxed">
-                 Upload PDF, DOCX, PPTX, or images
+               <h3 className="text-lg font-bold text-white mb-2">Upload Study Material</h3>
+               <p className="text-xs text-white/50 mb-6 max-w-[200px] leading-relaxed">
+                 PDF, DOCX, PPTX, TXT or images
                </p>
                
-               <button 
-                 onClick={() => fileInputRef.current?.click()}
-                 disabled={uploading}
-                 className="w-full py-3.5 rounded-xl bg-white text-black font-bold text-xs uppercase tracking-widest hover:bg-gray-200 transition-colors shadow-lg active:scale-[0.98] disabled:opacity-50"
-               >
+               <div className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-xs uppercase tracking-widest hover:bg-white/10 transition-colors">
                  {uploading ? 'Uploading...' : 'Select File'}
-               </button>
-           </GlassCard>
+               </div>
+           </div>
       </div>
     </div>
   );
