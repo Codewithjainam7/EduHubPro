@@ -1,23 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from './ui/GlassCard';
-import { Quiz } from '../types';
-import { ArrowRight, Brain, RefreshCcw, Check, Sparkles, Clock, Target, Play, AlertTriangle, PenTool } from 'lucide-react';
+import { Quiz, UploadedFile } from '../types';
+import { ArrowRight, Brain, RefreshCcw, Check, Sparkles, Clock, Target, Play, AlertTriangle, PenTool, FileQuestion } from 'lucide-react';
+import { generateQuestionBank } from '../services/geminiService';
 
 interface QuizViewProps {
   quizzes: Quiz[];
   onCreateQuiz: () => void;
   loading: boolean;
+  uploads: UploadedFile[];
 }
 
-export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loading }) => {
+export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loading, uploads }) => {
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [textAnswer, setTextAnswer] = useState('');
+  const [generatingExam, setGeneratingExam] = useState(false);
   
-  // Anti-cheat system
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
   const [showWarning, setShowWarning] = useState(false);
   const [examTerminated, setExamTerminated] = useState(false);
@@ -44,7 +46,55 @@ export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loadi
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [activeQuiz, completed, examTerminated, tabSwitchCount]);
 
-  // If no quiz active, show list
+  const handleGenerateSubjectiveExam = async () => {
+    if (uploads.length === 0) {
+      alert('Please upload study materials first!');
+      return;
+    }
+
+    setGeneratingExam(true);
+    const latestUpload = uploads[0];
+
+    if (latestUpload.status === 'error') {
+      alert('Cannot generate exam from invalid study material.');
+      setGeneratingExam(false);
+      return;
+    }
+
+    const examQuestions = await generateQuestionBank(latestUpload.content, 'QUESTION_BANK', 5, 4);
+    
+    if (examQuestions.length > 0) {
+      const newQuiz: Quiz = {
+        id: crypto.randomUUID(),
+        title: `Subjective Exam: ${latestUpload.name}`,
+        sourceFileId: latestUpload.id,
+        questions: examQuestions.map((q, idx) => ({
+          id: `q-${idx}`,
+          question: q.question,
+          options: q.options || [],
+          correctAnswer: -1,
+          explanation: q.answer,
+          userAnswer: undefined
+        })),
+        completed: false,
+        createdAt: new Date().toISOString()
+      };
+
+      setActiveQuiz(newQuiz);
+      setCurrentQuestionIdx(0);
+      setCompleted(false);
+      setSelectedOption(null);
+      setShowExplanation(false);
+      setTextAnswer('');
+      setTabSwitchCount(0);
+      setExamTerminated(false);
+    } else {
+      alert('Failed to generate exam. Please try again.');
+    }
+
+    setGeneratingExam(false);
+  };
+
   if (!activeQuiz) {
       return (
           <div className="space-y-10 animate-fade-in max-w-[1600px] mx-auto text-gray-200">
@@ -53,14 +103,24 @@ export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loadi
                     <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-3">Active Recall</h2>
                     <p className="text-gray-500 text-sm uppercase tracking-widest font-medium">Exam Preparation</p>
                 </div>
-                <button 
-                    onClick={onCreateQuiz}
-                    disabled={loading}
-                    className="mt-6 md:mt-0 flex items-center gap-3 bg-white text-black px-8 py-4 rounded-2xl font-bold text-sm shadow-[0_0_25px_rgba(255,255,255,0.15)] transition-all hover:scale-[1.02] hover:shadow-[0_0_35px_rgba(255,255,255,0.25)] active:scale-95 disabled:opacity-70 disabled:grayscale"
-                >
-                    {loading ? <RefreshCcw className="animate-spin" size={18} /> : <Sparkles size={18} />}
-                    {loading ? 'CREATING...' : 'START NEW QUIZ'}
-                </button>
+                <div className="mt-6 md:mt-0 flex gap-4">
+                    <button 
+                        onClick={handleGenerateSubjectiveExam}
+                        disabled={generatingExam}
+                        className="flex items-center gap-3 bg-gradient-to-r from-brand-violet to-brand-indigo text-white px-8 py-4 rounded-2xl font-bold text-sm shadow-[0_0_25px_rgba(59,130,246,0.3)] transition-all hover:scale-[1.02] hover:shadow-[0_0_35px_rgba(59,130,246,0.4)] active:scale-95 disabled:opacity-70 disabled:grayscale"
+                    >
+                        {generatingExam ? <RefreshCcw className="animate-spin" size={18} /> : <FileQuestion size={18} />}
+                        {generatingExam ? 'CREATING EXAM...' : 'SUBJECTIVE EXAM'}
+                    </button>
+                    <button 
+                        onClick={onCreateQuiz}
+                        disabled={loading}
+                        className="flex items-center gap-3 bg-white text-black px-8 py-4 rounded-2xl font-bold text-sm shadow-[0_0_25px_rgba(255,255,255,0.15)] transition-all hover:scale-[1.02] hover:shadow-[0_0_35px_rgba(255,255,255,0.25)] active:scale-95 disabled:opacity-70 disabled:grayscale"
+                    >
+                        {loading ? <RefreshCcw className="animate-spin" size={18} /> : <Sparkles size={18} />}
+                        {loading ? 'CREATING MCQ...' : 'MCQ QUIZ'}
+                    </button>
+                </div>
               </header>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 animate-slide-up stagger-1">
@@ -79,7 +139,6 @@ export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loadi
                             setExamTerminated(false);
                         }}
                       >
-                           {/* Glow Effect */}
                            <div className="absolute top-0 right-0 w-40 h-40 bg-brand-primary/10 rounded-full blur-[50px] opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                            
                            <div className="relative z-10">
@@ -111,6 +170,7 @@ export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loadi
 
   const question = activeQuiz.questions[currentQuestionIdx];
   const isLast = currentQuestionIdx === activeQuiz.questions.length - 1;
+  const isSubjectiveQuestion = !question.options || question.options.length === 0;
 
   const handleNext = () => {
       if (isLast) {
@@ -122,8 +182,6 @@ export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loadi
           setTextAnswer('');
       }
   };
-
-  const isSubjectiveQuestion = question.options === undefined || question.options.length === 0;
 
   if (completed) {
       return (
@@ -153,7 +211,6 @@ export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loadi
 
   return (
     <div className="max-w-5xl mx-auto pt-10 animate-fade-in text-gray-200">
-        {/* Anti-cheat warning overlay */}
         {showWarning && (
             <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
                 <div className="bg-red-500/90 backdrop-blur-xl border border-red-400 px-8 py-6 rounded-2xl shadow-[0_0_40px_rgba(239,68,68,0.4)] flex items-center gap-4">
@@ -171,7 +228,6 @@ export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loadi
                 Exit Quiz
             </button>
             <div className="flex items-center gap-4">
-                {/* Warning Counter */}
                 <div className="flex items-center gap-2 bg-red-500/10 px-4 py-2 rounded-full border border-red-500/20">
                     <AlertTriangle size={14} className="text-red-400" />
                     <span className="text-xs font-mono text-red-400">
@@ -191,17 +247,19 @@ export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loadi
         </div>
 
         <GlassCard className="mb-10 min-h-[500px] flex flex-col justify-center relative border-white/[0.08]" hoverEffect={false}>
-             {/* Ambient Glow */}
              <div className="absolute -top-20 -left-20 w-96 h-96 bg-blue-500/5 rounded-full blur-[100px] pointer-events-none"></div>
              
              <div className="relative z-10 p-8">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-start justify-between mb-4 gap-4">
                     <h3 className="text-3xl md:text-4xl font-bold text-white leading-tight flex-1">
                         {question.question}
                     </h3>
-                    {question.marks && (
-                        <div className="ml-4 px-4 py-2 bg-brand-primary/10 border border-brand-primary/20 rounded-xl">
-                            <span className="text-brand-primary font-bold text-sm">{question.marks} marks</span>
+                    {isSubjectiveQuestion && (
+                        <div className="px-4 py-2 bg-brand-primary/10 border border-brand-primary/20 rounded-xl shrink-0">
+                            <span className="text-brand-primary font-bold text-sm flex items-center gap-2">
+                                <PenTool size={14} />
+                                Subjective
+                            </span>
                         </div>
                     )}
                 </div>
@@ -211,13 +269,13 @@ export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loadi
                         <textarea
                             value={textAnswer}
                             onChange={(e) => setTextAnswer(e.target.value)}
-                            placeholder="Write your answer here..."
+                            placeholder="Write your answer here... Explain in detail."
                             disabled={showExplanation}
                             className="w-full min-h-[300px] bg-white/[0.02] border border-white/[0.05] rounded-2xl p-6 text-white placeholder-gray-600 focus:outline-none focus:border-brand-primary/50 focus:bg-white/[0.03] transition-all resize-none"
                         />
                         <div className="mt-2 text-xs text-gray-500 flex items-center gap-2">
                             <PenTool size={12} />
-                            <span>Write a detailed answer. Your response will be evaluated.</span>
+                            <span>Write a detailed answer. Your response will be evaluated against the model answer.</span>
                         </div>
                     </div>
                 ) : (
@@ -242,7 +300,8 @@ export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loadi
                                     className={btnClass}
                                 >
                                     <div className="flex items-center gap-6 relative z-10">
-                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 transition-colors border
+                                        <div className={`
+                                            w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 transition-colors border
                                             ${showExplanation && idx === question.correctAnswer ? 'bg-green-500 border-green-500 text-black' : 
                                               selectedOption === idx && !showExplanation ? 'bg-brand-primary border-brand-primary text-white' :
                                               'border-white/[0.1] text-gray-500 bg-transparent group-hover:border-white/[0.3]'}
@@ -263,7 +322,7 @@ export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loadi
              <div className="mb-10 p-8 rounded-3xl bg-white/[0.03] border border-white/[0.1] text-gray-300 text-lg animate-slide-up shadow-2xl">
                  <div className="flex items-center gap-3 mb-4 text-brand-primary">
                     <Sparkles size={20} />
-                    <span className="font-bold text-xs uppercase tracking-widest">Explanation</span>
+                    <span className="font-bold text-xs uppercase tracking-widest">Model Answer</span>
                  </div>
                  <p className="leading-relaxed font-light">{question.explanation}</p>
              </div>
