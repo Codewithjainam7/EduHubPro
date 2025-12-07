@@ -3,7 +3,7 @@ import { GlassCard } from './ui/GlassCard';
 import { StudySession, UploadedFile, AnalyticsData } from '../types';
 import { 
   Calendar, Clock, AlertCircle, Zap, Target, Activity, 
-  Cpu, Database, ShieldCheck, Play, MoreHorizontal, Upload, FileText, Loader2, Check, X
+  Cpu, Database, ShieldCheck, Play, MoreHorizontal, Upload, FileText, Loader2, Check, X, Plus
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -58,59 +58,60 @@ export const Dashboard: React.FC<DashboardProps> = ({
   }, [recentUploads]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
     setUploading(true);
     
+    let successCount = 0;
+    let errorCount = 0;
+    
     try {
       const { analyzeDocument } = await import('../services/geminiService');
-      const result = await analyzeDocument(file);
+      
+      // Process all files in parallel
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const result = await analyzeDocument(file);
 
-      if (result && !('error' in result)) {
-        const successData = result as { text: string, topics: string[], analysis: any };
-        
-        const newFile: UploadedFile = {
-          id: crypto.randomUUID(),
-          name: file.name,
-          content: successData.text,
-          type: file.type,
-          date: new Date().toISOString(),
-          status: 'ready',
-          topics: successData.topics,
-          analysis: successData.analysis
-        };
-        
-        onUpload(newFile);
-        setToastMessage(`${file.name} uploaded successfully!`);
+        if (result && !('error' in result)) {
+          const successData = result as { text: string, topics: string[], analysis: any };
+          
+          const newFile: UploadedFile = {
+            id: crypto.randomUUID(),
+            name: file.name,
+            content: successData.text,
+            type: file.type,
+            date: new Date().toISOString(),
+            status: 'ready',
+            topics: successData.topics,
+            analysis: successData.analysis
+          };
+          
+          onUpload(newFile);
+          successCount++;
+          return { success: true, name: file.name };
+        } else {
+          // Skip invalid files silently, don't create error entries
+          errorCount++;
+          console.log(`Skipped invalid file: ${file.name}`);
+          return { success: false, name: file.name };
+        }
+      });
+
+      await Promise.all(uploadPromises);
+      
+      // Show summary toast
+      if (successCount > 0) {
+        setToastMessage(`✓ ${successCount} file${successCount > 1 ? 's' : ''} uploaded successfully${errorCount > 0 ? ` (${errorCount} skipped)` : ''}`);
         setToastType('success');
-        setShowSuccessToast(true);
-        setTimeout(() => setShowSuccessToast(false), 3000);
       } else {
-        const errorMsg = (result && 'error' in result) ? result.error : 'Upload failed';
-        
-        const errorFile: UploadedFile = {
-          id: crypto.randomUUID(),
-          name: file.name,
-          content: errorMsg,
-          type: file.type,
-          date: new Date().toISOString(),
-          status: 'error',
-          topics: ['Upload Failed'],
-          analysis: {
-            summary: errorMsg,
-            keyConcepts: [],
-            definitions: [],
-            formulas: []
-          }
-        };
-        
-        onUpload(errorFile);
-        setToastMessage(errorMsg);
+        setToastMessage('No valid study materials found. Please upload educational content.');
         setToastType('error');
-        setShowSuccessToast(true);
-        setTimeout(() => setShowSuccessToast(false), 3000);
       }
+      
+      setShowSuccessToast(true);
+      setTimeout(() => setShowSuccessToast(false), 3000);
+      
     } catch (error) {
       console.error('Upload error:', error);
       setToastMessage('An error occurred during upload. Please try again.');
@@ -408,7 +409,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
                        <Database size={16} className="text-brand-indigo" /> 
                        Study Resources
                    </h3>
-                   <span className="text-xs font-mono text-brand-indigo">{recentUploads.filter(f => f.status === 'ready').length}</span>
+                   <div className="flex items-center gap-2">
+                       <span className="text-xs font-mono text-brand-indigo">{recentUploads.filter(f => f.status === 'ready').length}</span>
+                       <button 
+                         onClick={() => fileInputRef.current?.click()}
+                         className="text-xs bg-brand-primary/20 hover:bg-brand-primary/30 px-3 py-1.5 rounded-full text-brand-primary font-bold transition-colors border border-brand-primary/30 flex items-center gap-1"
+                       >
+                         <Plus size={12} /> Add
+                       </button>
+                       <input 
+                         ref={fileInputRef}
+                         type="file"
+                         multiple
+                         className="hidden"
+                         accept=".pdf,.txt,.doc,.docx,.jpg,.png,.pptx"
+                         onChange={handleFileSelect}
+                         disabled={uploading}
+                       />
+                   </div>
                </div>
                
                <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4 max-h-[400px]">
@@ -423,14 +441,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                            >
                              Upload Now
                            </button>
-                           <input 
-                             ref={fileInputRef}
-                             type="file"
-                             className="hidden"
-                             accept=".pdf,.txt,.doc,.docx,.jpg,.png,.pptx"
-                             onChange={handleFileSelect}
-                             disabled={uploading}
-                           />
                        </div>
                    ) : (
                        Object.entries(categorizedFiles).map(([category, categoryFiles]) => (
