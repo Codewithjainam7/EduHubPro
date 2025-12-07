@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GlassCard } from './ui/GlassCard';
 import { Quiz, UploadedFile } from '../types';
-import { ArrowRight, Brain, RefreshCcw, Check, Sparkles, Clock, Target, Play, AlertTriangle, PenTool, FileQuestion } from 'lucide-react';
+import { ArrowRight, Brain, RefreshCcw, Check, Sparkles, Clock, Target, Play, AlertTriangle, PenTool, FileQuestion, ChevronLeft } from 'lucide-react';
 import { generateQuestionBank } from '../services/geminiService';
 
 interface QuizViewProps {
@@ -97,37 +97,37 @@ export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loadi
 
   if (!activeQuiz) {
       return (
-          <div className="space-y-10 animate-fade-in max-w-[1600px] mx-auto text-gray-200">
-              <header className="flex flex-col md:flex-row justify-between items-end mb-8 animate-slide-up">
+          <div className="space-y-6 md:space-y-10 animate-fade-in max-w-[1600px] mx-auto text-gray-200 px-2">
+              <header className="flex flex-col gap-4 mb-6 md:mb-8 animate-slide-up">
                 <div>
-                    <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-3">Active Recall</h2>
-                    <p className="text-gray-500 text-sm uppercase tracking-widest font-medium">Exam Preparation</p>
+                    <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white tracking-tight mb-2 md:mb-3">Active Recall</h2>
+                    <p className="text-gray-500 text-xs md:text-sm uppercase tracking-widest font-medium">Exam Preparation</p>
                 </div>
-                <div className="mt-6 md:mt-0 flex gap-4">
+                <div className="flex flex-col sm:flex-row gap-3">
                     <button 
                         onClick={handleGenerateSubjectiveExam}
                         disabled={generatingExam}
-                        className="flex items-center gap-3 bg-gradient-to-r from-brand-violet to-brand-indigo text-white px-8 py-4 rounded-2xl font-bold text-sm shadow-[0_0_25px_rgba(59,130,246,0.3)] transition-all hover:scale-[1.02] hover:shadow-[0_0_35px_rgba(59,130,246,0.4)] active:scale-95 disabled:opacity-70 disabled:grayscale"
+                        className="flex items-center justify-center gap-2 md:gap-3 bg-gradient-to-r from-brand-violet to-brand-indigo text-white px-6 md:px-8 py-3 md:py-4 rounded-xl md:rounded-2xl font-bold text-xs md:text-sm shadow-[0_0_25px_rgba(59,130,246,0.3)] transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-70 disabled:grayscale"
                     >
-                        {generatingExam ? <RefreshCcw className="animate-spin" size={18} /> : <FileQuestion size={18} />}
-                        {generatingExam ? 'CREATING EXAM...' : 'SUBJECTIVE EXAM'}
+                        {generatingExam ? <RefreshCcw className="animate-spin" size={16} /> : <FileQuestion size={16} />}
+                        {generatingExam ? 'CREATING...' : 'SUBJECTIVE EXAM'}
                     </button>
                     <button 
                         onClick={onCreateQuiz}
                         disabled={loading}
-                        className="flex items-center gap-3 bg-white text-black px-8 py-4 rounded-2xl font-bold text-sm shadow-[0_0_25px_rgba(255,255,255,0.15)] transition-all hover:scale-[1.02] hover:shadow-[0_0_35px_rgba(255,255,255,0.25)] active:scale-95 disabled:opacity-70 disabled:grayscale"
+                        className="flex items-center justify-center gap-2 md:gap-3 bg-white text-black px-6 md:px-8 py-3 md:py-4 rounded-xl md:rounded-2xl font-bold text-xs md:text-sm shadow-[0_0_25px_rgba(255,255,255,0.15)] transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-70 disabled:grayscale"
                     >
-                        {loading ? <RefreshCcw className="animate-spin" size={18} /> : <Sparkles size={18} />}
-                        {loading ? 'CREATING MCQ...' : 'MCQ QUIZ'}
+                        {loading ? <RefreshCcw className="animate-spin" size={16} /> : <Sparkles size={16} />}
+                        {loading ? 'CREATING...' : 'MCQ QUIZ'}
                     </button>
                 </div>
               </header>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 animate-slide-up stagger-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8 animate-slide-up">
                   {quizzes.map(quiz => (
                       <GlassCard 
                         key={quiz.id} 
-                        className="group cursor-pointer relative overflow-hidden min-h-[240px] flex flex-col justify-between hover:border-brand-primary/50 transition-all duration-500"
+                        className="group cursor-pointer relative overflow-hidden min-h-[200px] md:min-h-[240px] flex flex-col justify-between hover:border-brand-primary/50 transition-all duration-500"
                         onClick={() => {
                             setActiveQuiz(quiz);
                             setCurrentQuestionIdx(0);
@@ -142,23 +142,23 @@ export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loadi
                            <div className="absolute top-0 right-0 w-40 h-40 bg-brand-primary/10 rounded-full blur-[50px] opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                            
                            <div className="relative z-10">
-                                <div className="flex justify-between items-start mb-6">
-                                    <div className="w-12 h-12 bg-white/[0.05] rounded-xl flex items-center justify-center group-hover:text-brand-primary group-hover:bg-brand-primary/10 transition-colors border border-white/[0.05]">
-                                        <Brain size={24} />
+                                <div className="flex justify-between items-start mb-4 md:mb-6">
+                                    <div className="w-10 h-10 md:w-12 md:h-12 bg-white/[0.05] rounded-xl flex items-center justify-center group-hover:text-brand-primary group-hover:bg-brand-primary/10 transition-colors border border-white/[0.05]">
+                                        <Brain size={20} className="md:w-6 md:h-6" />
                                     </div>
-                                    {quiz.completed && <div className="text-green-500 bg-green-500/10 p-2 rounded-full"><Check size={16} /></div>}
+                                    {quiz.completed && <div className="text-green-500 bg-green-500/10 p-1.5 md:p-2 rounded-full"><Check size={14} /></div>}
                                 </div>
-                                <h3 className="text-xl font-bold text-white mb-2 line-clamp-2 leading-tight group-hover:text-brand-primary transition-colors">{quiz.title}</h3>
-                                <p className="text-xs text-gray-500 font-mono">{new Date(quiz.createdAt).toLocaleDateString()}</p>
+                                <h3 className="text-base md:text-xl font-bold text-white mb-2 line-clamp-2 leading-tight group-hover:text-brand-primary transition-colors">{quiz.title}</h3>
+                                <p className="text-[10px] md:text-xs text-gray-500 font-mono">{new Date(quiz.createdAt).toLocaleDateString()}</p>
                            </div>
 
-                           <div className="relative z-10 flex items-center justify-between pt-6 border-t border-white/[0.05]">
-                               <div className="flex gap-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                                   <span className="flex items-center gap-1.5"><Target size={14} /> {quiz.questions.length} Qs</span>
-                                   <span className="flex items-center gap-1.5"><Clock size={14} /> 5m</span>
+                           <div className="relative z-10 flex items-center justify-between pt-4 md:pt-6 border-t border-white/[0.05]">
+                               <div className="flex gap-3 md:gap-4 text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                                   <span className="flex items-center gap-1 md:gap-1.5"><Target size={12} /> {quiz.questions.length} Qs</span>
+                                   <span className="flex items-center gap-1 md:gap-1.5"><Clock size={12} /> 5m</span>
                                </div>
                                <span className="text-brand-primary opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-4 group-hover:translate-x-0 duration-300">
-                                   <Play size={20} fill="currentColor" />
+                                   <Play size={18} fill="currentColor" />
                                </span>
                            </div>
                       </GlassCard>
@@ -185,22 +185,22 @@ export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loadi
 
   if (completed) {
       return (
-          <div className="max-w-2xl mx-auto pt-20 animate-fade-in text-center text-gray-200">
-              <GlassCard className={`p-20 flex flex-col items-center ${examTerminated ? 'border-red-500/20 shadow-[0_0_50px_rgba(239,68,68,0.1)]' : 'border-green-500/20 shadow-[0_0_50px_rgba(34,197,94,0.1)]'}`}>
-                    <div className={`w-28 h-28 ${examTerminated ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'} rounded-full flex items-center justify-center mb-10 border shadow-[0_0_30px_rgba(34,197,94,0.2)]`}>
-                        {examTerminated ? <AlertTriangle size={48} /> : <TrophyIcon />}
+          <div className="max-w-2xl mx-auto pt-10 md:pt-20 px-4 animate-fade-in text-center text-gray-200">
+              <GlassCard className={`p-10 md:p-20 flex flex-col items-center ${examTerminated ? 'border-red-500/20 shadow-[0_0_50px_rgba(239,68,68,0.1)]' : 'border-green-500/20 shadow-[0_0_50px_rgba(34,197,94,0.1)]'}`}>
+                    <div className={`w-20 h-20 md:w-28 md:h-28 ${examTerminated ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20'} rounded-full flex items-center justify-center mb-6 md:mb-10 border shadow-[0_0_30px_rgba(34,197,94,0.2)]`}>
+                        {examTerminated ? <AlertTriangle size={32} className="md:w-12 md:h-12" /> : <TrophyIcon />}
                     </div>
-                    <h2 className="text-5xl font-bold text-white mb-6 tracking-tight">
+                    <h2 className="text-3xl md:text-5xl font-bold text-white mb-4 md:mb-6 tracking-tight">
                         {examTerminated ? 'Exam Terminated' : 'Quiz Completed'}
                     </h2>
-                    <p className="text-xl text-gray-400 mb-12 font-light">
+                    <p className="text-base md:text-xl text-gray-400 mb-8 md:mb-12 font-light">
                         {examTerminated 
-                            ? 'Multiple tab switches detected. Exam has been automatically terminated for academic integrity.'
+                            ? 'Multiple tab switches detected. Exam terminated for academic integrity.'
                             : 'Your results have been saved to your progress report.'}
                     </p>
                     <button 
                         onClick={() => setActiveQuiz(null)}
-                        className="bg-white/[0.05] hover:bg-white/[0.1] text-white px-10 py-4 rounded-2xl font-bold border border-white/[0.1] transition-all"
+                        className="bg-white/[0.05] hover:bg-white/[0.1] text-white px-8 md:px-10 py-3 md:py-4 rounded-xl md:rounded-2xl font-bold text-sm border border-white/[0.1] transition-all"
                     >
                         Return to Dashboard
                     </button>
@@ -210,54 +210,55 @@ export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loadi
   }
 
   return (
-    <div className="max-w-5xl mx-auto pt-10 animate-fade-in text-gray-200">
+    <div className="max-w-4xl mx-auto pt-6 md:pt-10 px-4 animate-fade-in text-gray-200 pb-20">
         {showWarning && (
-            <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
-                <div className="bg-red-500/90 backdrop-blur-xl border border-red-400 px-8 py-6 rounded-2xl shadow-[0_0_40px_rgba(239,68,68,0.4)] flex items-center gap-4">
-                    <AlertTriangle size={32} className="text-white" />
+            <div className="fixed top-20 md:top-24 left-1/2 -translate-x-1/2 z-50 animate-slide-up w-[90%] max-w-md">
+                <div className="bg-red-500/90 backdrop-blur-xl border border-red-400 px-4 md:px-8 py-4 md:py-6 rounded-xl md:rounded-2xl shadow-[0_0_40px_rgba(239,68,68,0.4)] flex items-center gap-3 md:gap-4">
+                    <AlertTriangle size={24} className="text-white shrink-0" />
                     <div>
-                        <h3 className="text-white font-bold text-lg mb-1">Tab Switch Detected!</h3>
-                        <p className="text-white/90 text-sm">Warning {tabSwitchCount} of 3. Exam will terminate after 3 warnings.</p>
+                        <h3 className="text-white font-bold text-sm md:text-lg mb-1">Tab Switch Detected!</h3>
+                        <p className="text-white/90 text-xs md:text-sm">Warning {tabSwitchCount}/3</p>
                     </div>
                 </div>
             </div>
         )}
 
-        <div className="mb-10 flex items-center justify-between">
-            <button onClick={() => setActiveQuiz(null)} className="text-gray-500 hover:text-white text-xs font-bold uppercase tracking-widest transition-colors px-4 py-2 hover:bg-white/[0.05] rounded-lg">
-                Exit Quiz
+        <div className="mb-6 md:mb-10 flex items-center justify-between gap-4">
+            <button onClick={() => setActiveQuiz(null)} className="flex items-center gap-2 text-gray-500 hover:text-white text-[10px] md:text-xs font-bold uppercase tracking-widest transition-colors px-3 md:px-4 py-2 hover:bg-white/[0.05] rounded-lg">
+                <ChevronLeft size={14} />
+                <span className="hidden sm:inline">Exit</span>
             </button>
-            <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2 bg-red-500/10 px-4 py-2 rounded-full border border-red-500/20">
-                    <AlertTriangle size={14} className="text-red-400" />
-                    <span className="text-xs font-mono text-red-400">
-                        Warnings: {tabSwitchCount}/3
+            <div className="flex items-center gap-2 md:gap-4">
+                <div className="flex items-center gap-2 bg-red-500/10 px-2 md:px-4 py-1.5 md:py-2 rounded-full border border-red-500/20">
+                    <AlertTriangle size={12} className="text-red-400" />
+                    <span className="text-[10px] md:text-xs font-mono text-red-400">
+                        {tabSwitchCount}/3
                     </span>
                 </div>
                 
-                <div className="bg-white/[0.03] px-4 py-2 rounded-full border border-white/[0.05] flex items-center gap-4">
-                    <div className="h-1.5 w-40 bg-gray-800 rounded-full overflow-hidden">
+                <div className="bg-white/[0.03] px-3 md:px-4 py-1.5 md:py-2 rounded-full border border-white/[0.05] flex items-center gap-2 md:gap-4">
+                    <div className="h-1 md:h-1.5 w-20 md:w-40 bg-gray-800 rounded-full overflow-hidden">
                         <div className="h-full bg-brand-primary shadow-[0_0_10px_rgba(139,92,246,0.8)] transition-all duration-500" style={{width: `${((currentQuestionIdx + 1) / activeQuiz.questions.length) * 100}%`}}></div>
                     </div>
-                    <span className="text-xs font-mono text-brand-primary">
+                    <span className="text-[10px] md:text-xs font-mono text-brand-primary">
                         {currentQuestionIdx + 1}/{activeQuiz.questions.length}
                     </span>
                 </div>
             </div>
         </div>
 
-        <GlassCard className="mb-10 min-h-[500px] flex flex-col justify-center relative border-white/[0.08]" hoverEffect={false}>
+        <GlassCard className="mb-6 md:mb-10 flex flex-col relative border-white/[0.08]" hoverEffect={false}>
              <div className="absolute -top-20 -left-20 w-96 h-96 bg-blue-500/5 rounded-full blur-[100px] pointer-events-none"></div>
              
-             <div className="relative z-10 p-8">
-                <div className="flex items-start justify-between mb-4 gap-4">
-                    <h3 className="text-3xl md:text-4xl font-bold text-white leading-tight flex-1">
+             <div className="relative z-10 p-4 md:p-8">
+                <div className="flex flex-col sm:flex-row items-start justify-between mb-4 gap-3">
+                    <h3 className="text-xl md:text-3xl lg:text-4xl font-bold text-white leading-tight flex-1">
                         {question.question}
                     </h3>
                     {isSubjectiveQuestion && (
-                        <div className="px-4 py-2 bg-brand-primary/10 border border-brand-primary/20 rounded-xl shrink-0">
-                            <span className="text-brand-primary font-bold text-sm flex items-center gap-2">
-                                <PenTool size={14} />
+                        <div className="px-3 py-1.5 md:px-4 md:py-2 bg-brand-primary/10 border border-brand-primary/20 rounded-lg md:rounded-xl shrink-0">
+                            <span className="text-brand-primary font-bold text-xs md:text-sm flex items-center gap-2">
+                                <PenTool size={12} className="md:w-3.5 md:h-3.5" />
                                 Subjective
                             </span>
                         </div>
@@ -265,23 +266,23 @@ export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loadi
                 </div>
 
                 {isSubjectiveQuestion ? (
-                    <div className="mt-8">
+                    <div className="mt-4 md:mt-8">
                         <textarea
                             value={textAnswer}
                             onChange={(e) => setTextAnswer(e.target.value)}
                             placeholder="Write your answer here... Explain in detail."
                             disabled={showExplanation}
-                            className="w-full min-h-[300px] bg-white/[0.02] border border-white/[0.05] rounded-2xl p-6 text-white placeholder-gray-600 focus:outline-none focus:border-brand-primary/50 focus:bg-white/[0.03] transition-all resize-none"
+                            className="w-full min-h-[200px] md:min-h-[300px] bg-white/[0.02] border border-white/[0.05] rounded-xl md:rounded-2xl p-4 md:p-6 text-sm md:text-base text-white placeholder-gray-600 focus:outline-none focus:border-brand-primary/50 focus:bg-white/[0.03] transition-all resize-none"
                         />
-                        <div className="mt-2 text-xs text-gray-500 flex items-center gap-2">
-                            <PenTool size={12} />
-                            <span>Write a detailed answer. Your response will be evaluated against the model answer.</span>
+                        <div className="mt-2 text-[10px] md:text-xs text-gray-500 flex items-center gap-2">
+                            <PenTool size={10} className="md:w-3 md:h-3" />
+                            <span>Write a detailed answer for evaluation</span>
                         </div>
                     </div>
                 ) : (
-                    <div className="grid gap-5 mt-12">
+                    <div className="grid gap-3 md:gap-5 mt-6 md:mt-12">
                         {question.options?.map((opt, idx) => {
-                            let btnClass = "w-full text-left p-6 rounded-2xl border transition-all duration-300 font-medium text-lg relative group overflow-hidden ";
+                            let btnClass = "w-full text-left p-4 md:p-6 rounded-xl md:rounded-2xl border transition-all duration-300 font-medium text-sm md:text-lg relative group overflow-hidden ";
                             
                             if (showExplanation) {
                                 if (idx === question.correctAnswer) btnClass += "bg-green-500/10 border-green-500/50 text-green-400";
@@ -299,53 +300,53 @@ export const QuizView: React.FC<QuizViewProps> = ({ quizzes, onCreateQuiz, loadi
                                     disabled={showExplanation}
                                     className={btnClass}
                                 >
-                                    <div className="flex items-center gap-6 relative z-10">
+                                    <div className="flex items-center gap-3 md:gap-6 relative z-10">
                                         <div className={`
-                                            w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 transition-colors border
+                                            w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center text-xs md:text-sm font-bold shrink-0 transition-colors border
                                             ${showExplanation && idx === question.correctAnswer ? 'bg-green-500 border-green-500 text-black' : 
                                               selectedOption === idx && !showExplanation ? 'bg-brand-primary border-brand-primary text-white' :
                                               'border-white/[0.1] text-gray-500 bg-transparent group-hover:border-white/[0.3]'}
                                         `}>
                                             {String.fromCharCode(65 + idx)}
                                         </div>
-                                        {opt}
+                                        <span className="break-words">{opt}</span>
                                     </div>
                                 </button>
                             );
                         })}
                     </div>
                 )}
+
+                {showExplanation && (
+                     <div className="mt-6 md:mt-8 p-4 md:p-6 rounded-xl md:rounded-2xl bg-white/[0.03] border border-white/[0.1] text-gray-300 text-sm md:text-base">
+                         <div className="flex items-center gap-2 md:gap-3 mb-3 md:mb-4 text-brand-primary">
+                            <Sparkles size={16} className="md:w-5 md:h-5" />
+                            <span className="font-bold text-[10px] md:text-xs uppercase tracking-widest">Model Answer</span>
+                         </div>
+                         <p className="leading-relaxed font-light">{question.explanation}</p>
+                     </div>
+                )}
+
+                <div className="flex justify-end mt-6 md:mt-8">
+                    {!showExplanation ? (
+                        <button 
+                            onClick={() => setShowExplanation(true)}
+                            disabled={isSubjectiveQuestion ? !textAnswer.trim() : selectedOption === null}
+                            className="bg-white text-black px-8 md:px-12 py-3 md:py-4 rounded-xl md:rounded-2xl font-bold text-sm md:text-base hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_30px_rgba(255,255,255,0.1)]"
+                        >
+                            CONFIRM
+                        </button>
+                    ) : (
+                        <button 
+                            onClick={handleNext}
+                            className="bg-brand-primary hover:bg-brand-primary/90 text-white px-8 md:px-12 py-3 md:py-4 rounded-xl md:rounded-2xl font-bold text-sm md:text-base shadow-[0_0_30px_rgba(139,92,246,0.4)] transition-all flex items-center gap-2 md:gap-3 hover:scale-105"
+                        >
+                            {isLast ? 'FINISH' : 'NEXT'} <ArrowRight size={18} strokeWidth={3} />
+                        </button>
+                    )}
+                </div>
             </div>
         </GlassCard>
-
-        {showExplanation && (
-             <div className="mb-10 p-8 rounded-3xl bg-white/[0.03] border border-white/[0.1] text-gray-300 text-lg animate-slide-up shadow-2xl">
-                 <div className="flex items-center gap-3 mb-4 text-brand-primary">
-                    <Sparkles size={20} />
-                    <span className="font-bold text-xs uppercase tracking-widest">Model Answer</span>
-                 </div>
-                 <p className="leading-relaxed font-light">{question.explanation}</p>
-             </div>
-        )}
-
-        <div className="flex justify-end pb-32">
-            {!showExplanation ? (
-                <button 
-                    onClick={() => setShowExplanation(true)}
-                    disabled={isSubjectiveQuestion ? !textAnswer.trim() : selectedOption === null}
-                    className="bg-white text-black px-12 py-5 rounded-2xl font-bold text-base hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_30px_rgba(255,255,255,0.1)]"
-                >
-                    CONFIRM SELECTION
-                </button>
-            ) : (
-                <button 
-                    onClick={handleNext}
-                    className="bg-brand-primary hover:bg-brand-primary/90 text-white px-12 py-5 rounded-2xl font-bold text-base shadow-[0_0_30px_rgba(139,92,246,0.4)] transition-all flex items-center gap-3 hover:scale-105"
-                >
-                    {isLast ? 'FINISH' : 'NEXT'} <ArrowRight size={20} strokeWidth={3} />
-                </button>
-            )}
-        </div>
     </div>
   );
 };
