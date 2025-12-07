@@ -84,35 +84,6 @@
         overflow-x: hidden;
         color: #F8FAFC;
         -webkit-font-smoothing: antialiased;
-        cursor: none;
-      }
-
-      /* Custom Cursor */
-      .cursor-custom {
-        cursor: none !important;
-      }
-      
-      .cursor-custom * {
-        cursor: none !important;
-      }
-
-      #custom-cursor {
-        width: 20px;
-        height: 20px;
-        border: 2px solid #3b82f6;
-        border-radius: 50%;
-        position: fixed;
-        pointer-events: none;
-        z-index: 99999;
-        transition: transform 0.15s ease-out, background-color 0.2s ease;
-        transform: translate(-50%, -50%);
-        mix-blend-mode: screen;
-      }
-
-      #custom-cursor.hover {
-        transform: translate(-50%, -50%) scale(2);
-        background-color: rgba(59, 130, 246, 0.2);
-        box-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
       }
 
       /* Scrollbar */
@@ -191,6 +162,23 @@
       .custom-scrollbar::-webkit-scrollbar-thumb:hover {
         background: rgba(59, 130, 246, 0.5);
       }
+
+      /* Cursor Glow Effect */
+      .cursor-glow {
+        position: fixed;
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+        pointer-events: none;
+        z-index: 9999;
+        transform: translate(-50%, -50%);
+        transition: opacity 0.3s ease;
+        opacity: 0;
+      }
+
+      body:hover .cursor-glow {
+        opacity: 1;
+      }
     </style>
   <script type="importmap">
 {
@@ -207,43 +195,15 @@
 </script>
 </head>
   <body>
-    <div id="custom-cursor"></div>
+    <div class="cursor-glow" id="cursorGlow"></div>
     <div id="root"></div>
     <script>
-      const cursor = document.getElementById('custom-cursor');
-      let mouseX = 0, mouseY = 0;
-      let cursorX = 0, cursorY = 0;
-
+      // Cursor glow follow effect
+      const glow = document.getElementById('cursorGlow');
       document.addEventListener('mousemove', (e) => {
-        mouseX = e.clientX;
-        mouseY = e.clientY;
+        glow.style.left = e.clientX + 'px';
+        glow.style.top = e.clientY + 'px';
       });
-
-      function animateCursor() {
-        const dx = mouseX - cursorX;
-        const dy = mouseY - cursorY;
-        
-        cursorX += dx * 0.15;
-        cursorY += dy * 0.15;
-        
-        cursor.style.left = cursorX + 'px';
-        cursor.style.top = cursorY + 'px';
-        
-        requestAnimationFrame(animateCursor);
-      }
-      animateCursor();
-
-      document.addEventListener('mouseenter', (e) => {
-        if (e.target.matches('button, a, input, [role="button"], .cursor-hover')) {
-          cursor.classList.add('hover');
-        }
-      }, true);
-
-      document.addEventListener('mouseleave', (e) => {
-        if (e.target.matches('button, a, input, [role="button"], .cursor-hover')) {
-          cursor.classList.remove('hover');
-        }
-      }, true);
     </script>
   <script type="module" src="/index.tsx"></script>
 </body>
